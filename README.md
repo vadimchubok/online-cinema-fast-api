@@ -71,7 +71,8 @@ docker-compose logs -f
 ```
 — View database logs.
 
-📂 Project structure
+###  **Project structure**
+
 src/auth — Authorization (Dev 1)
 
 src/movies — Directory (Dev 2)
