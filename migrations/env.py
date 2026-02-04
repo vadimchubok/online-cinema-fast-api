@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from logging.config import fileConfig
@@ -9,6 +10,16 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import settings
 from src.core.database import Base
+from src.movies.models import (
+    Movie,
+    Genre,
+    Star,
+    Director,
+    Certification,
+    movie_genres,
+    movie_directors,
+    movie_stars,
+)
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -83,14 +94,21 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    configuration = config.get_section(config.config_ini_section, {})
+    configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = settings.database_url_async
 
-    async_engine_from_config(
+    connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
+    async def run():
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+        await connectable.dispose()
+
+    asyncio.run(run())
 
 
 if context.is_offline_mode():
