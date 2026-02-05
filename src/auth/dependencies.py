@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.auth.models import User, UserGroupEnum
 from src.auth.security import decode_access_token
@@ -49,7 +50,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await session.execute(select(User).where(User.id == user_id))
+    result = await session.execute(
+        select(User).options(joinedload(User.group)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -75,13 +78,11 @@ def require_role(*required_roles: UserGroupEnum):
 
     async def role_checker(
         current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_async_session),
     ) -> User:
         if not current_user.group:
-            result = await session.execute(
-                select(User).where(User.id == current_user.id)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="User group not assigned"
             )
-            current_user = result.scalar_one()
 
         user_role = current_user.group.name
         allowed_roles = [role.value for role in required_roles]

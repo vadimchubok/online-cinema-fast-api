@@ -13,6 +13,9 @@ from src.core.database import Base
 from src.auth import models as auth_models
 from src.movies import models as movies_models
 from src.interactions import models as interactions_models
+from src.cart import models as cart_models
+from src.orders import models as orders_models
+from src.payments import models as payment_models
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
