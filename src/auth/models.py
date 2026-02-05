@@ -1,6 +1,6 @@
 from datetime import datetime, date, timezone, timedelta
 from enum import Enum
-from typing import Optional, List, Set
+from typing import Optional, List
 
 from sqlalchemy import (
     Boolean,
@@ -18,10 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from src.auth.security import hash_password, verify_password, generate_secure_token
 from src.auth.validators import validate_password_strength, validate_email
 from src.core.database import Base
-from src.orders.models import Order
-from src.payments.models import Payment
-from src.cart.models import Cart
-from src.interactions.models import MovieReaction, Favorite, Comment, Rating
 
 
 class UserGroupEnum(str, Enum):

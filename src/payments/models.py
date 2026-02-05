@@ -1,14 +1,13 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Set
+from typing import Optional
 
 from sqlalchemy import Enum as SAEnum, ForeignKey, DECIMAL
 
 from sqlalchemy import DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base
-from src.orders.models import OrderItem
 
 
 class PaymentStatus(str, Enum):
