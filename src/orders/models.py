@@ -1,5 +1,4 @@
 import enum
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import ForeignKey, DateTime, Numeric, Enum as SQLEnum

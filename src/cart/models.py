@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from sqlalchemy import ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
