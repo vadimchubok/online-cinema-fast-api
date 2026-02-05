@@ -38,16 +38,12 @@ class Payment(Base):
         SAEnum(PaymentStatus, name="payment_status"),
         nullable=False,
     )
-    amount: Mapped[float] = mapped_column(DECIMAL(10, 2),
-                                          nullable=False)
+    amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     external_payment_id: Mapped[Optional[str]]
 
-    user: Mapped["User"] = relationship("User",
-                                        back_populates="payments")
-    order: Mapped["Order"] = relationship("Order",
-                                          back_populates="payments")
-    order_items: Mapped[Set["OrderItem"]] = relationship(
-        back_populates="payment")
+    user: Mapped["User"] = relationship("User", back_populates="payments")
+    order: Mapped["Order"] = relationship("Order", back_populates="payments")
+    order_items: Mapped[Set["OrderItem"]] = relationship(back_populates="payment")
 
 
 class PaymentItem(Base):
@@ -63,8 +59,6 @@ class PaymentItem(Base):
         nullable=False,
         index=True,
     )
-    price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2),
-                                                    nullable=False)
+    price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     payment: Mapped["Payment"] = relationship(back_populates="payment_item")
     order_item: Mapped["OrderItem"] = relationship(back_populates="payment_item")
-
