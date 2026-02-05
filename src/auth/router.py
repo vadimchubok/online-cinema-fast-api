@@ -6,13 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.auth.dependencies import get_current_user
-from src.auth.models import User, UserGroup, UserGroupEnum, ActivationTokenModel
-from src.auth.schemas import LoginRequest, Token, UserCreate, UserResponse
+from src.auth.models import User, UserGroup, UserGroupEnum, ActivationTokenModel, RefreshTokenModel
+from src.auth.schemas import (
+    LoginRequest,
+    UserCreate,
+    UserResponse,
+    TokenLoginResponseSchema,
+    UserRegistrationResponseSchema
+)
 from src.auth.security import (
     create_access_token,
     verify_password,
     generate_secure_token,
 )
+from src.core.config import settings
 from src.core.database import get_async_session
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -20,10 +27,10 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Register new user",
-    description="Register a new user. MVP version: user is active immediately.",
+    description="Register a new user. User must activate account via activation token.",
 )
 async def register(
     user_data: UserCreate, session: AsyncSession = Depends(get_async_session)
@@ -56,10 +63,10 @@ async def register(
     )
     new_user.password = user_data.password
 
-    token_value = generate_secure_token()
+    activation_token_value  = generate_secure_token()
     activation_token = ActivationTokenModel(
         user=new_user,
-        token=token_value,
+        token=activation_token_value ,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
     )
 
@@ -67,22 +74,27 @@ async def register(
     session.add(activation_token)
     await session.commit()
     await session.refresh(new_user)
-    token_value = generate_secure_token()
 
-    activation_link = f"http://localhost:8000/api/v1/auth/activate/{token_value}"
+    activation_link = f"http://localhost:8000/api/v1/auth/activate/{activation_token_value}"
     print(activation_link)
 
-    return new_user
+    return UserRegistrationResponseSchema(
+        id=new_user.id,
+        email=new_user.email,
+        is_active=new_user.is_active,
+        activation_token=activation_token_value,
+    )
 
 
 @router.post(
     "/login",
-    response_model=Token,
+    response_model=TokenLoginResponseSchema,
     summary="Login",
-    description="Login with email and password to get access token",
+    description="Login and receive access token. Refresh token is issued together.",
 )
 async def login(
-    credentials: LoginRequest, session: AsyncSession = Depends(get_async_session)
+    credentials: LoginRequest,
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     User login
@@ -103,8 +115,25 @@ async def login(
         )
 
     access_token = create_access_token(user_id=user.id)
+    refresh_token_value = generate_secure_token()
+    refresh_expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
 
-    return Token(access_token=access_token)
+    refresh_token = RefreshTokenModel(
+        user_id=user.id,
+        token=refresh_token_value,
+        expires_at=refresh_expires_at,
+    )
+
+    session.add(refresh_token)
+    await session.commit()
+
+    return TokenLoginResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token_value,
+    )
 
 
 @router.get(
@@ -167,3 +196,70 @@ async def activate_user(
 
     return {"detail": "Account successfully activated"}
 
+
+@router.post(
+    "/refresh",
+    response_model=TokenLoginResponseSchema,
+    summary="Refresh access token",
+    description="Rotate refresh token and issue a new access token",
+)
+async def refresh_access_token(
+    data: TokenLoginResponseSchema,
+    session: AsyncSession = Depends(get_async_session),
+):
+
+    result = await session.execute(
+        select(RefreshTokenModel)
+        .where(RefreshTokenModel.token == data.refresh_token)
+        .options(selectinload(RefreshTokenModel.user))
+    )
+    refresh_token = result.scalar_one_or_none()
+
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    if refresh_token.expires_at < datetime.now(timezone.utc):
+        await session.delete(refresh_token)
+        await session.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expired",
+        )
+
+    user = refresh_token.user
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user",
+        )
+
+    await session.delete(refresh_token)
+
+    new_refresh_value = generate_secure_token()
+    new_refresh_expires_at = (
+        datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    new_refresh = RefreshTokenModel(
+        user_id=user.id,
+        token=new_refresh_value,
+        expires_at=new_refresh_expires_at,
+    )
+
+    session.add(new_refresh)
+
+    new_access_token = create_access_token(user_id=user.id)
+
+    await session.commit()
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_value,
+        "token_type": "bearer",
+    }
