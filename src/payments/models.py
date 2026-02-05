@@ -1,11 +1,11 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Set
+from typing import Optional
 
 from sqlalchemy import Enum as SAEnum, ForeignKey, DECIMAL
 
 from sqlalchemy import DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base
 
@@ -41,10 +41,6 @@ class Payment(Base):
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     external_payment_id: Mapped[Optional[str]]
 
-    user: Mapped["User"] = relationship("User", back_populates="payments")
-    order: Mapped["Order"] = relationship("Order", back_populates="payments")
-    order_items: Mapped[Set["OrderItem"]] = relationship(back_populates="payment")
-
 
 class PaymentItem(Base):
     __tablename__ = "payment_items"
@@ -60,5 +56,3 @@ class PaymentItem(Base):
         index=True,
     )
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
-    payment: Mapped["Payment"] = relationship(back_populates="payment_item")
-    order_item: Mapped["OrderItem"] = relationship(back_populates="payment_item")

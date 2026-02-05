@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     JWT_SIGNING_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     SENDGRID_API_KEY: str | None = None
     EMAIL_FROM: str | None = None
