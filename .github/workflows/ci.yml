@@ -40,7 +40,9 @@ jobs:
         run: poetry lock
 
       - name: Install dependencies
-        run: poetry install --no-root
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-root
 
       - name: Run Ruff Check (Linter)
         run: poetry run ruff check .
