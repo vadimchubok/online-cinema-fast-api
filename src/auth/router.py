@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.auth.dependencies import get_current_user
 from src.auth.models import User, UserGroup, UserGroupEnum, ActivationTokenModel
@@ -117,3 +118,52 @@ async def get_me(current_user: User = Depends(get_current_user)):
     Get info about current user
     """
     return current_user
+
+
+@router.get(
+    "/activate/{token}",
+    summary="Activate user account",
+    description="Activate user account using activation token",
+)
+async def activate_user(
+    token: str,
+    session: AsyncSession = Depends(get_async_session),
+):
+    result = await session.execute(
+        select(ActivationTokenModel)
+        .where(ActivationTokenModel.token == token)
+        .options(selectinload(ActivationTokenModel.user))
+    )
+
+    activation_token = result.scalar_one_or_none()
+
+    if activation_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid activation token",
+        )
+
+    if activation_token.expires_at < datetime.now(timezone.utc):
+        await session.delete(activation_token)
+        await session.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Activation token has expired",
+        )
+
+    user = activation_token.user
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User already activated",
+        )
+
+    user.is_active = True
+    await session.delete(activation_token)
+
+    await session.commit()
+
+    return {"detail": "Account successfully activated"}
+
