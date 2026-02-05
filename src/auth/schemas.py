@@ -25,6 +25,9 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class Token(BaseModel):
+class TokenAccessResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+class TokenRefreshRequestSchema(BaseModel):
+    refresh_token: str
