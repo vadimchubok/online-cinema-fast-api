@@ -1,6 +1,6 @@
 from datetime import datetime, date, timezone, timedelta
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Set
 
 from sqlalchemy import (
     Boolean,
@@ -75,6 +75,14 @@ class User(Base):
     profile: Mapped[Optional["UserProfileModel"]] = relationship(
         "UserProfileModel", back_populates="user", cascade="all, delete-orphan"
     )
+
+    payments: Mapped[Set["Payment"]] = relationship(back_populates="user")
+    orders: Mapped[Set["Order"]] = relationship(back_populates="user")
+    cart: Mapped["Cart"] = relationship(back_populates="user")
+    movie_reactions: Mapped["MovieReaction"] = relationship(back_populates="user")
+    favorites: Mapped[Set["Favorite"]] = relationship(back_populates="user")
+    comments: Mapped[Set["Comment"]] = relationship(back_populates="user")
+    ratings: Mapped[List["Rating"]] = relationship(back_populates="user")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, is_active={self.is_active})>"
