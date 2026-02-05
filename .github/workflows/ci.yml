@@ -7,9 +7,8 @@ on:
     branches: [ "develop" ]
 
 jobs:
-  lint-and-test:
+  static-checks:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:16-alpine
@@ -32,22 +31,48 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: 'pip'
 
       - name: Install Poetry
         run: pip install poetry==2.0.1
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --no-root
 
-      - name: Run Ruff (Linting)
+      - name: Run Ruff Check (Linter)
         run: poetry run ruff check .
 
-      - name: Run Migrations
+      - name: Run Ruff Format (Check formatting)
+        run: poetry run ruff format . --check
+
+      - name: Check Migrations (Smoke Test)
         env:
           DATABASE_URL_ASYNC: postgresql+asyncpg://test_user:test_password@localhost:5432/test_cinema
         run: poetry run alembic upgrade head
 
-      - name: Run Tests
-        env:
-          DATABASE_URL_ASYNC: postgresql+asyncpg://test_user:test_password@localhost:5432/test_cinema
-        run: poetry run pytest
+  test-e2e:
+    needs: static-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          echo "POSTGRES_USER=test_user" >> .env
+          echo "POSTGRES_PASSWORD=test_password" >> .env
+          echo "POSTGRES_DB=test_cinema" >> .env
+          echo "DATABASE_URL_ASYNC=postgresql+asyncpg://test_user:test_password@test_db:5432/test_cinema" >> .env
+          echo "MINIO_ROOT_USER=minioadmin" >> .env
+          echo "MINIO_ROOT_PASSWORD=some_password" >> .env
+          echo "SECRET_KEY_ACCESS=test_secret_key" >> .env
+          echo "SECRET_KEY_REFRESH=test_refresh_key" >> .env
+
+      - name: Start Docker Compose and wait for completion
+        run: |
+          docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from web
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose-tests.yml down

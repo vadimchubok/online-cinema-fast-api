@@ -40,6 +40,10 @@ Clone repo:
   python -m poetry run ruff format .
 ````
 
+```bash
+  docker-compose run --rm pytest
+````
+
 The API will then be available at: http://localhost:8000
 Swagger documentation: http://localhost:8000/docs
 
@@ -51,7 +55,7 @@ Pull Requests: **Only to the develop branch**.
 
 A minimum of 2 approvals from colleagues is required.
 
-CI automatically checks the code with the Ruff linter.
+CI automatically checks the code with the Ruff linter and tests
 
 Useful commands:
 ```bash
