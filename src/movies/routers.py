@@ -87,7 +87,5 @@ async def delete_movie_endpoint(
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    # moviebuy
-
     await crud.delete_movie(session=db, movie=movie)
     return None
