@@ -18,6 +18,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from src.auth.security import hash_password, verify_password, generate_secure_token
 from src.auth.validators import validate_password_strength, validate_email
 from src.core.database import Base
+from src.orders.models import Order
+from src.payments.models import Payment
+from src.cart.models import Cart
+from src.interactions.models import MovieReaction, Favorite, Comment, Rating
 
 
 class UserGroupEnum(str, Enum):
@@ -76,13 +80,13 @@ class User(Base):
         "UserProfileModel", back_populates="user", cascade="all, delete-orphan"
     )
 
-    payments: Mapped[Set["Payment"]] = relationship(back_populates="user")
-    orders: Mapped[Set["Order"]] = relationship(back_populates="user")
-    cart: Mapped["Cart"] = relationship(back_populates="user")
-    movie_reactions: Mapped["MovieReaction"] = relationship(back_populates="user")
-    favorites: Mapped[Set["Favorite"]] = relationship(back_populates="user")
-    comments: Mapped[Set["Comment"]] = relationship(back_populates="user")
-    ratings: Mapped[List["Rating"]] = relationship(back_populates="user")
+    # payments: Mapped[Set["Payment"]] = relationship(back_populates="user")
+    # orders: Mapped[Set["Order"]] = relationship(back_populates="user")
+    # cart: Mapped["Cart"] = relationship(back_populates="user")
+    # movie_reactions: Mapped["MovieReaction"] = relationship(back_populates="user")
+    # favorites: Mapped[Set["Favorite"]] = relationship(back_populates="user")
+    # comments: Mapped[Set["Comment"]] = relationship(back_populates="user")
+    # ratings: Mapped[List["Rating"]] = relationship(back_populates="user")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, is_active={self.is_active})>"

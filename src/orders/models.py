@@ -23,9 +23,9 @@ class Order(Base):
     )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    items: Mapped[list["OrderItem"]] = relationship(
-        back_populates="order", cascade="all, delete-orphan"
-    )
+    # items: Mapped[list["OrderItem"]] = relationship(
+    #     back_populates="order", cascade="all, delete-orphan"
+    # )
 
 
 class OrderItem(Base):
@@ -37,4 +37,3 @@ class OrderItem(Base):
 
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    order: Mapped["Order"] = relationship(back_populates="items")

@@ -89,8 +89,8 @@ class MovieReaction(Base):
         nullable=False,
     )
 
-    user = relationship("User", backref="movie_reactions")
-    movie = relationship("Movie", backref="reactions")
+    # user = relationship("User", backref="movie_reactions")
+    # movie = relationship("Movie", backref="reactions")
 
 
 class Comment(Base):
