@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
@@ -75,3 +76,29 @@ def decode_access_token(token: str) -> dict | None:
 
     except JWTError:
         return None
+
+
+def hash_password(password: str) -> str:
+    """
+    Hash a plain-text password using the configured password context.
+
+    This function takes a plain-text password and returns its bcrypt hash.
+    The bcrypt algorithm is used with a specified number of rounds for enhanced security.
+
+    Args:
+        password (str): The plain-text password to hash.
+
+    Returns:
+        str: The resulting hashed password.
+    """
+    return pwd_context.hash(password)
+
+
+def generate_secure_token(length: int = 32) -> str:
+    """
+    Generate a secure random token.
+
+    Returns:
+        str: Securely generated token.
+    """
+    return secrets.token_urlsafe(length)

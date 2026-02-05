@@ -24,11 +24,6 @@ Clone repo:
   poetry config virtualenvs.in-project true
   poetry install
 ```
-This will raise:
-
-PostgreSQL on port 5432
-
-Redis on port 6379
 
 ### 4. Docker + DB
 
@@ -41,7 +36,8 @@ Redis on port 6379
 
 ### Before commit!!!
 ```bash
-  poetry run ruff check .
+  python -m poetry run ruff check .
+  python -m poetry run ruff format .
 ````
 
 The API will then be available at: http://localhost:8000
@@ -59,12 +55,12 @@ CI automatically checks the code with the Ruff linter.
 
 Useful commands:
 ```bash
-  poetry run ruff check
+  poetry run ruff check .
 ```
 -check the code with a linter.
 
 ```bash
-  poetry run rough format.
+  poetry run rough format .
 ```
 — automatically format the code.
 
