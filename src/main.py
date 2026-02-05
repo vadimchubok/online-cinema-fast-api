@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from src.auth.router import router as auth_router
+from src.movies.routers import router as movies_router
+from src.interactions.router import router as interaction_router
 
 
 app = FastAPI(title="Online Cinema API")
