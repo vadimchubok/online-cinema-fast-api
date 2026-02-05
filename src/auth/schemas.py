@@ -40,4 +40,3 @@ class TokenLoginResponseSchema(BaseModel):
 
 class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
-

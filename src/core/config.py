@@ -11,7 +11,6 @@ class Settings(BaseSettings):
 
     DATABASE_URL_ASYNC: str | None = None
 
-
     @property
     def database_url_async(self) -> str:
         if self.DATABASE_URL_ASYNC:

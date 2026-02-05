@@ -6,13 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.auth.dependencies import get_current_user
-from src.auth.models import User, UserGroup, UserGroupEnum, ActivationTokenModel, RefreshTokenModel
+from src.auth.models import (
+    User,
+    UserGroup,
+    UserGroupEnum,
+    ActivationTokenModel,
+    RefreshTokenModel,
+)
 from src.auth.schemas import (
     LoginRequest,
     UserCreate,
     UserResponse,
     TokenLoginResponseSchema,
-    UserRegistrationResponseSchema, TokenRefreshRequestSchema
+    UserRegistrationResponseSchema,
+    TokenRefreshRequestSchema,
 )
 from src.auth.security import (
     create_access_token,
@@ -63,10 +70,10 @@ async def register(
     )
     new_user.password = user_data.password
 
-    activation_token_value  = generate_secure_token()
+    activation_token_value = generate_secure_token()
     activation_token = ActivationTokenModel(
         user=new_user,
-        token=activation_token_value ,
+        token=activation_token_value,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
     )
 
@@ -75,7 +82,9 @@ async def register(
     await session.commit()
     await session.refresh(new_user)
 
-    activation_link = f"http://localhost:8000/api/v1/auth/activate/{activation_token_value}"
+    activation_link = (
+        f"http://localhost:8000/api/v1/auth/activate/{activation_token_value}"
+    )
     print(activation_link)
 
     return UserRegistrationResponseSchema(
@@ -93,8 +102,7 @@ async def register(
     description="Login and receive access token. Refresh token is issued together.",
 )
 async def login(
-    credentials: LoginRequest,
-    session: AsyncSession = Depends(get_async_session)
+    credentials: LoginRequest, session: AsyncSession = Depends(get_async_session)
 ):
     """
     User login
@@ -116,9 +124,8 @@ async def login(
 
     access_token = create_access_token(user_id=user.id)
     refresh_token_value = generate_secure_token()
-    refresh_expires_at = (
-            datetime.now(timezone.utc)
-            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    refresh_expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     refresh_token = RefreshTokenModel(
@@ -241,9 +248,8 @@ async def refresh_access_token(
     await session.delete(refresh_token)
 
     new_refresh_value = generate_secure_token()
-    new_refresh_expires_at = (
-        datetime.now(timezone.utc)
-        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    new_refresh_expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     new_refresh = RefreshTokenModel(
@@ -276,8 +282,6 @@ async def logout(
     session: AsyncSession = Depends(get_async_session),
 ):
     await session.execute(
-        delete(RefreshTokenModel)
-        .where(RefreshTokenModel.user_id == current_user.id)
+        delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
     await session.commit()
-
