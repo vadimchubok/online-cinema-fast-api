@@ -20,14 +20,20 @@ class UserResponse(UserBase):
     group_id: int
 
 
+class UserRegistrationResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+    activation_token: str
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
 
-class TokenAccessResponseSchema(BaseModel):
+class TokenLoginResponseSchema(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str
