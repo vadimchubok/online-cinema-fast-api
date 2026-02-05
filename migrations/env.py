@@ -12,6 +12,7 @@ from src.core.config import settings
 from src.core.database import Base
 from src.auth import models as auth_models
 from src.movies import models as movies_models
+from src.interactions import models as interactions_models
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
