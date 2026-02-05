@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
 
-    DATABASE_URL_ASYNC: str
+    DATABASE_URL_ASYNC: str | None = None
 
     @property
     def database_url_async(self) -> str:
