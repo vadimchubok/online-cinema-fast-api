@@ -10,17 +10,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import settings
 from src.core.database import Base
-from src.movies.models import (
-    Movie,
-    Genre,
-    Star,
-    Director,
-    Certification,
-    movie_genres,
-    movie_directors,
-    movie_stars,
-)
-from src.auth.models import User, UserGroup, UserGroupEnum  # noqa
+from src.auth import models as auth_models
+from src.movies import models as movies_models
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -28,6 +19,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), ".."
 # access to the values within the .ini file in use.
 config = context.config
 
+config.set_main_option("sqlalchemy.url", settings.database_url_async)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
