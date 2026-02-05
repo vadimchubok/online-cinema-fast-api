@@ -6,7 +6,7 @@ from src.core.config import settings
 from typing import AsyncGenerator
 
 
-test_engine = create_async_engine(settings.DATABASE_URL_ASYNC, echo=False)
+test_engine = create_async_engine(settings.database_url_async, echo=False)
 TestingSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 
