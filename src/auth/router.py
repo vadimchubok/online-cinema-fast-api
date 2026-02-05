@@ -9,7 +9,6 @@ from src.auth.models import User, UserGroup, UserGroupEnum, ActivationTokenModel
 from src.auth.schemas import LoginRequest, Token, UserCreate, UserResponse
 from src.auth.security import (
     create_access_token,
-    get_password_hash,
     verify_password,
     generate_secure_token,
 )
