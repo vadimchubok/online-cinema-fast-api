@@ -7,6 +7,7 @@ app = FastAPI(title="Online Cinema API")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(movies_router, prefix="/api/v1")
 
+
 @app.get("/")
 def read_root():
     return {"status": "Backend is running"}

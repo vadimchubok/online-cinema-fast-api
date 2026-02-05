@@ -10,19 +10,25 @@ from src.auth.models import User, UserGroupEnum
 
 router = APIRouter(prefix="/movies", tags=["Movies"])
 
-user_permission = Depends(require_role(UserGroupEnum.USER, UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN))
-moderator_permission = Depends(require_role(UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN))
+user_permission = Depends(
+    require_role(UserGroupEnum.USER, UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
+)
+moderator_permission = Depends(
+    require_role(UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
+)
 
 
 @router.get("/", response_model=List[schemas.MovieRead])
 async def read_movies(
-        skip: int = 0,
-        limit: int = 20,
-        search: Optional[str] = None,
-        sort_by: Optional[str] = Query(None, enum=["price_asc", "price_desc", "year_desc", "popularity"]),
-        genre_id: Optional[int] = None,
-        db: AsyncSession = Depends(get_async_session),
-        staff: User = user_permission
+    skip: int = 0,
+    limit: int = 20,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = Query(
+        None, enum=["price_asc", "price_desc", "year_desc", "popularity"]
+    ),
+    genre_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = user_permission,
 ):
 
     movies = await crud.get_movies(
@@ -33,9 +39,9 @@ async def read_movies(
 
 @router.get("/{movie_id}", response_model=schemas.MovieRead)
 async def read_movie(
-        movie_id: int,
-        db: AsyncSession = Depends(get_async_session),
-        staff: User = user_permission
+    movie_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = user_permission,
 ):
 
     movie = await crud.get_movie_by_id(db, movie_id=movie_id)
@@ -46,9 +52,9 @@ async def read_movie(
 
 @router.post("/", response_model=schemas.MovieRead, status_code=status.HTTP_201_CREATED)
 async def create_movie_endpoint(
-        movie_in: schemas.MovieCreate,
-        db: AsyncSession = Depends(get_async_session),
-        staff: User = moderator_permission
+    movie_in: schemas.MovieCreate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
 ):
 
     return await crud.create_movie(session=db, movie_in=movie_in)
@@ -56,30 +62,32 @@ async def create_movie_endpoint(
 
 @router.put("/{movie_id}", response_model=schemas.MovieRead)
 async def update_movie_endpoint(
-        movie_id: int,
-        movie_update: schemas.MovieUpdate,
-        db: AsyncSession = Depends(get_async_session),
-        staff: User = moderator_permission
+    movie_id: int,
+    movie_update: schemas.MovieUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
 ):
     movie = await crud.get_movie_by_id(db, movie_id=movie_id)
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    updated_movie = await crud.update_movie(session=db, movie=movie, movie_update=movie_update)
+    updated_movie = await crud.update_movie(
+        session=db, movie=movie, movie_update=movie_update
+    )
     return updated_movie
 
 
 @router.delete("/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_movie_endpoint(
-        movie_id: int,
-        db: AsyncSession = Depends(get_async_session),
-        staff: User = moderator_permission
+    movie_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
 ):
     movie = await crud.get_movie_by_id(db, movie_id=movie_id)
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
 
-    #moviebuy
+    # moviebuy
 
     await crud.delete_movie(session=db, movie=movie)
     return None

@@ -51,9 +51,7 @@ async def get_current_user(
         )
 
     result = await session.execute(
-        select(User)
-        .options(joinedload(User.group))
-        .where(User.id == user_id)
+        select(User).options(joinedload(User.group)).where(User.id == user_id)
     )
     user = result.scalar_one_or_none()
 
@@ -83,8 +81,7 @@ def require_role(*required_roles: UserGroupEnum):
     ) -> User:
         if not current_user.group:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User group not assigned"
+                status_code=status.HTTP_403_FORBIDDEN, detail="User group not assigned"
             )
 
         user_role = current_user.group.name

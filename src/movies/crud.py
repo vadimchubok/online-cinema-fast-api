@@ -10,10 +10,7 @@ from src.movies.schemas import MovieCreate, MovieUpdate
 from src.orders.models import OrderItem, Order, OrderStatus
 
 
-async def check_movie_purchased(
-    session: AsyncSession,
-    movie_id: int
-) -> bool:
+async def check_movie_purchased(session: AsyncSession, movie_id: int) -> bool:
     """
     Check whether a movie has been purchased in any paid order.
     Returns True if the movie exists in at least one PAID order,
@@ -22,14 +19,12 @@ async def check_movie_purchased(
     stmt = (
         select(OrderItem.id)
         .join(Order)
-        .where(
-            OrderItem.movie_id == movie_id,
-            Order.status == OrderStatus.PAID
-        )
+        .where(OrderItem.movie_id == movie_id, Order.status == OrderStatus.PAID)
         .limit(1)
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none() is not None
+
 
 async def get_movie_by_id(session: AsyncSession, movie_id: int) -> Optional[Movie]:
     """
@@ -45,19 +40,20 @@ async def get_movie_by_id(session: AsyncSession, movie_id: int) -> Optional[Movi
             selectinload(Movie.genres),
             selectinload(Movie.directors),
             selectinload(Movie.stars),
-            selectinload(Movie.certification)
+            selectinload(Movie.certification),
         )
     )
     result = await session.execute(query)
     return result.scalar_one_or_none()
 
+
 async def get_movies(
-        session: AsyncSession,
-        skip: int = 0,
-        limit: int = 20,
-        search: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        genre_id: Optional[int] = None
+    session: AsyncSession,
+    skip: int = 0,
+    limit: int = 20,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    genre_id: Optional[int] = None,
 ) -> Sequence[Movie]:
     """
     Retrieve a list of movies with optional filtering, searching, and sorting.
@@ -69,7 +65,7 @@ async def get_movies(
         selectinload(Movie.genres),
         selectinload(Movie.directors),
         selectinload(Movie.stars),
-        selectinload(Movie.certification)
+        selectinload(Movie.certification),
     )
 
     if genre_id:
@@ -80,7 +76,7 @@ async def get_movies(
             Movie.name.ilike(f"%{search}%"),
             Movie.description.ilike(f"%{search}%"),
             Movie.stars.any(Star.name.ilike(f"%{search}%")),
-            Movie.directors.any(Director.name.ilike(f"%{search}%"))
+            Movie.directors.any(Director.name.ilike(f"%{search}%")),
         )
         query = query.where(search_filter)
 
@@ -99,6 +95,7 @@ async def get_movies(
     result = await session.execute(query)
     return result.scalars().all()
 
+
 async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> Movie:
     """
     Create a new movie and assign related genres, directors, and stars.
@@ -110,24 +107,39 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> Movie:
     new_movie = Movie(**data)
 
     if movie_in.genre_ids:
-        genres_result = await session.execute(select(Genre).where(Genre.id.in_(movie_in.genre_ids)))
+        genres_result = await session.execute(
+            select(Genre).where(Genre.id.in_(movie_in.genre_ids))
+        )
         genres = genres_result.scalars().all()
         if len(genres) != len(movie_in.genre_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more genres not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more genres not found",
+            )
         new_movie.genres = list(genres)
 
     if movie_in.director_ids:
-        directors_result = await session.execute(select(Director).where(Director.id.in_(movie_in.director_ids)))
+        directors_result = await session.execute(
+            select(Director).where(Director.id.in_(movie_in.director_ids))
+        )
         directors = directors_result.scalars().all()
         if len(directors) != len(movie_in.director_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more directors not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more directors not found",
+            )
         new_movie.directors = list(directors)
 
     if movie_in.star_ids:
-        stars_result = await session.execute(select(Star).where(Star.id.in_(movie_in.star_ids)))
+        stars_result = await session.execute(
+            select(Star).where(Star.id.in_(movie_in.star_ids))
+        )
         stars = stars_result.scalars().all()
         if len(stars) != len(movie_in.star_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more stars not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more stars not found",
+            )
         new_movie.stars = list(stars)
 
     session.add(new_movie)
@@ -139,15 +151,14 @@ async def create_movie(session: AsyncSession, movie_in: MovieCreate) -> Movie:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Movie with this name, year, and time already exists"
+            detail="Movie with this name, year, and time already exists",
         )
 
     return await get_movie_by_id(session, new_movie.id)
 
+
 async def update_movie(
-        session: AsyncSession,
-        movie: Movie,
-        movie_update: MovieUpdate
+    session: AsyncSession, movie: Movie, movie_update: MovieUpdate
 ) -> Movie:
     """
     Update an existing movie and its related entities.
@@ -159,18 +170,28 @@ async def update_movie(
 
     if "genre_ids" in update_data:
         genre_ids = update_data.pop("genre_ids")
-        genres_result = await session.execute(select(Genre).where(Genre.id.in_(genre_ids)))
+        genres_result = await session.execute(
+            select(Genre).where(Genre.id.in_(genre_ids))
+        )
         genres = genres_result.scalars().all()
         if len(genres) != len(genre_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more genres not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more genres not found",
+            )
         movie.genres = list(genres)
 
     if "director_ids" in update_data:
         director_ids = update_data.pop("director_ids")
-        directors_result = await session.execute(select(Director).where(Director.id.in_(director_ids)))
+        directors_result = await session.execute(
+            select(Director).where(Director.id.in_(director_ids))
+        )
         directors = directors_result.scalars().all()
         if len(directors) != len(director_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more directors not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more directors not found",
+            )
         movie.directors = list(directors)
 
     if "star_ids" in update_data:
@@ -178,7 +199,10 @@ async def update_movie(
         stars_result = await session.execute(select(Star).where(Star.id.in_(star_ids)))
         stars = stars_result.scalars().all()
         if len(stars) != len(star_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more stars not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more stars not found",
+            )
         movie.stars = list(stars)
 
     for key, value in update_data.items():
@@ -193,10 +217,11 @@ async def update_movie(
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Update failed due to unique constraint violation"
+            detail="Update failed due to unique constraint violation",
         )
 
     return await get_movie_by_id(session, movie.id)
+
 
 async def delete_movie(session: AsyncSession, movie: Movie) -> None:
     """
@@ -207,7 +232,7 @@ async def delete_movie(session: AsyncSession, movie: Movie) -> None:
     if await check_movie_purchased(session, movie.id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete movie: it has already been purchased by users."
+            detail="Cannot delete movie: it has already been purchased by users.",
         )
     await session.delete(movie)
     await session.commit()
