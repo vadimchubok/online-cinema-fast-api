@@ -11,12 +11,6 @@ class Settings(BaseSettings):
 
     DATABASE_URL_ASYNC: str | None = None
 
-    SECRET_KEY_ACCESS: str
-    SECRET_KEY_REFRESH: str
-    JWT_SIGNING_ALGORITHM: str = "HS256"
-
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     @property
     def database_url_async(self) -> str:
