@@ -34,6 +34,43 @@ Clone repo:
   docker exec -it cinema_app alembic current # check DB status after migration
 ```
 
+## Testing
+
+The project uses **pytest** for automated testing. To ensure a clean environment, all tests automatically use an isolated **SQLite in-memory database**, so no extra database configuration is required for running tests.
+
+### 🚀 Local Execution
+Ensure that all dependencies are installed via Poetry:
+```bash
+poetry install
+```
+
+Run all tests:
+```bash
+poetry run pytest
+```
+
+Run tests with a detailed verbose report:
+```bash
+poetry run pytest -v
+```
+
+### Docker Execution
+If you are running the application using Docker Compose, use the following command to run tests inside the container:
+```bash
+docker-compose exec app poetry run pytest
+```
+
+### Code Quality (Linting & Formatting)
+Before creating a Pull Request, please ensure your code adheres to the project's style guide using **Ruff**:
+
+```bash
+# Check for errors and auto-fix simple issues
+poetry run ruff check . --fix
+
+# Format the code according to project rules
+poetry run ruff format .
+```
+
 ### Before commit!!!
 ```bash
   python -m poetry run ruff check .

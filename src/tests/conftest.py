@@ -1,6 +1,7 @@
 import sys
 import os
 
+# Залишаємо імпорти для коректних шляхів
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import pytest
@@ -10,13 +11,13 @@ from unittest.mock import MagicMock
 from datetime import datetime
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.pool import StaticPool
 
 from src.core.database import Base, get_async_session
 from src.main import app
 from src.auth.models import User, UserGroup, UserGroupEnum
-from src.auth.security import create_access_token  # noqa: E402
+from src.auth.security import create_access_token
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -24,10 +25,6 @@ test_engine = create_async_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
-
-
-def pytest_configure(config):
-    config.addinivalue_line("markers", "integration: mark test as integration test")
 
 
 @pytest.fixture(scope="session")
@@ -101,8 +98,6 @@ async def client():
 
 @pytest.fixture
 async def moderator_user(db_session):
-    from sqlalchemy import select
-
     res = await db_session.execute(
         select(UserGroup).where(UserGroup.name == UserGroupEnum.MODERATOR.value)
     )
