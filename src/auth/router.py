@@ -101,6 +101,7 @@ async def register(
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
+        email_type="email_activation"
     )
     return UserRegistrationResponseSchema(
         id=new_user.id,
@@ -392,13 +393,14 @@ async def sendgrid_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """Handle SendGrid webhook events."""
     try:
         events = await request.json()
     except JSONDecodeError:
-        return {"detail": "empty payload ignored"}
+        return {"status": "error", "detail": "Invalid JSON"}
 
     if not isinstance(events, list):
-        return {"detail": "non-event payload ignored"}
+        return {"status": "error", "detail": "Expected event list"}
 
     for event in events:
         await SendGridWebhookService.process_event(event, session)
