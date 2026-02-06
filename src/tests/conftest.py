@@ -12,14 +12,13 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import src.auth.security as security  # noqa: E402
 
 from src.core.database import Base, get_async_session  # noqa: E402
 from src.main import app  # noqa: E402
 from src.auth.models import UserGroup, UserGroupEnum  # noqa: E402
 
-security.hash_password = lambda p: f"hashed_{p}"
-security.verify_password = lambda p, h: True
+# security.hash_password = lambda p: f"hashed_{p}"
+# security.verify_password = lambda p, h: True
 
 
 test_engine = create_async_engine(
@@ -58,7 +57,7 @@ def mock_external_services(monkeypatch):
     mock = MagicMock()
     monkeypatch.setattr("redis.asyncio.from_url", lambda *args, **kwargs: mock)
     monkeypatch.setattr("src.auth.router.send_email", lambda *args, **kwargs: None)
-    monkeypatch.setattr("src.auth.models.validate_password_strength", lambda p: None)
+    # monkeypatch.setattr("src.auth.models.validate_password_strength", lambda p: None)
 
     class FakeDatetime:
         @classmethod
