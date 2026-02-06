@@ -24,9 +24,7 @@ class SendGridWebhookService:
             user = await session.get(User, int(user_id))
 
         if not user and email:
-            result = await session.execute(
-                select(User).where(User.email == email)
-            )
+            result = await session.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
 
         if not user:

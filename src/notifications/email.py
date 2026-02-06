@@ -23,6 +23,4 @@ def send_email(
     response = sg.client.mail.send.post(request_body=mail.get())
 
     if response.status_code not in (200, 202):
-        raise RuntimeError(
-            f"SendGrid error {response.status_code}: {response.body}"
-        )
+        raise RuntimeError(f"SendGrid error {response.status_code}: {response.body}")

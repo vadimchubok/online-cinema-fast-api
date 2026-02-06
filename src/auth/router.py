@@ -389,8 +389,8 @@ async def update_avatar(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def sendgrid_webhook(
-        request: Request,
-        session: AsyncSession = Depends(get_async_session),
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         events = await request.json()
