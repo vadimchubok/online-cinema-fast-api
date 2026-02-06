@@ -44,6 +44,10 @@ class CommentCreate(BaseModel):
     parent_id: int | None = None
 
 
+class CommentUpdate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000)
+
+
 class CommentOut(BaseModel):
     id: int
     user_id: int
@@ -54,3 +58,23 @@ class CommentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CommentsListOut(BaseModel):
+    items: list[CommentOut]
+
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    is_read: bool
+    created_at: datetime
+    actor_user_id: int | None
+    comment_id: int | None
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationsListOut(BaseModel):
+    items: list[NotificationOut]
