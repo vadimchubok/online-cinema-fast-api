@@ -9,6 +9,8 @@ from src.auth.models import User, UserGroupEnum
 
 
 router = APIRouter(prefix="/movies", tags=["Movies"])
+genres_router = APIRouter(prefix="/genres", tags=["Genres"])
+stars_router = APIRouter(prefix="/stars", tags=["Stars"])
 
 user_permission = Depends(
     require_role(UserGroupEnum.USER, UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
@@ -50,7 +52,8 @@ async def read_movie(
     return movie
 
 
-@router.post("/", response_model=schemas.MovieRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schemas.MovieRead,
+             status_code=status.HTTP_201_CREATED)
 async def create_movie_endpoint(
     movie_in: schemas.MovieCreate,
     db: AsyncSession = Depends(get_async_session),
@@ -88,4 +91,48 @@ async def delete_movie_endpoint(
         raise HTTPException(status_code=404, detail="Movie not found")
 
     await crud.delete_movie(session=db, movie=movie)
+    return None
+
+
+@genres_router.get("/", response_model=List[schemas.GenreReadWithCount])
+async def read_genres(
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = user_permission,
+):
+    """
+    List all genres with the count of movies in each.
+    """
+    return await crud.get_genres_with_counts(db)
+
+@genres_router.post("/", response_model=schemas.GenreRead,
+                    status_code=status.HTTP_201_CREATED)
+async def create_genre(
+    genre_in: schemas.GenreCreate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    return await crud.create_genre(db, genre_in)
+
+@genres_router.put("/{genre_id}", response_model=schemas.GenreRead)
+async def update_genre(
+    genre_id: int,
+    genre_update: schemas.GenreUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    genre = await crud.get_genre_by_id(db, genre_id)
+    if not genre:
+        raise HTTPException(status_code=404, detail="Genre not found")
+    return await crud.update_genre(db, genre, genre_update)
+
+@genres_router.delete("/{genre_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_genre(
+    genre_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    genre = await crud.get_genre_by_id(db, genre_id)
+    if not genre:
+        raise HTTPException(status_code=404, detail="Genre not found")
+    await crud.delete_genre(db, genre)
     return None
