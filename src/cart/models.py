@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import ForeignKey, DateTime, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
 
@@ -23,7 +23,9 @@ class CartItem(Base):
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     added_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
     )
 
     cart: Mapped["Cart"] = relationship(back_populates="items")
