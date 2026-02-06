@@ -136,3 +136,56 @@ async def delete_genre(
         raise HTTPException(status_code=404, detail="Genre not found")
     await crud.delete_genre(db, genre)
     return None
+
+@stars_router.get("/", response_model=List[schemas.StarRead])
+async def read_stars(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = user_permission,
+):
+    return await crud.get_stars(db, skip=skip, limit=limit, search=search)
+
+@stars_router.get("/{star_id}", response_model=schemas.StarRead)
+async def read_star(
+    star_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = user_permission,
+):
+    star = await crud.get_star_by_id(db, star_id)
+    if not star:
+        raise HTTPException(status_code=404, detail="Star not found")
+    return star
+
+@stars_router.post("/", response_model=schemas.StarRead, status_code=status.HTTP_201_CREATED)
+async def create_star(
+    star_in: schemas.StarCreate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    return await crud.create_star(db, star_in)
+
+@stars_router.put("/{star_id}", response_model=schemas.StarRead)
+async def update_star(
+    star_id: int,
+    star_update: schemas.StarUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    star = await crud.get_star_by_id(db, star_id)
+    if not star:
+        raise HTTPException(status_code=404, detail="Star not found")
+    return await crud.update_star(db, star, star_update)
+
+@stars_router.delete("/{star_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_star(
+    star_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    staff: User = moderator_permission,
+):
+    star = await crud.get_star_by_id(db, star_id)
+    if not star:
+        raise HTTPException(status_code=404, detail="Star not found")
+    await crud.delete_star(db, star)
+    return None
