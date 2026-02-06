@@ -42,7 +42,9 @@ class S3Service:
         }
         self.bucket_name = settings.S3_BUCKET_NAME
 
-    async def upload_file(self, file_data: bytes, object_name: str, content_type: str) -> str:
+    async def upload_file(
+        self, file_data: bytes, object_name: str, content_type: str
+    ) -> str:
         try:
             async with self.session.client("s3", **self.config) as client:
                 await client.put_object(
@@ -56,7 +58,7 @@ class S3Service:
             print(f"S3 Upload Error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error uploading file to storage"
+                detail="Error uploading file to storage",
             )
 
     async def delete_file(self, object_name: str):
@@ -66,13 +68,15 @@ class S3Service:
         except Exception as e:
             print(f"S3 Delete Error: {e}")
 
-    async def generate_presigned_url(self, object_name: str, expiration: int = 3600) -> str:
+    async def generate_presigned_url(
+        self, object_name: str, expiration: int = 3600
+    ) -> str:
         try:
             async with self.session.client("s3", **self.config) as client:
                 response = await client.generate_presigned_url(
-                    'get_object',
-                    Params={'Bucket': self.bucket_name, 'Key': object_name},
-                    ExpiresIn=expiration
+                    "get_object",
+                    Params={"Bucket": self.bucket_name, "Key": object_name},
+                    ExpiresIn=expiration,
                 )
             return response
         except Exception as e:

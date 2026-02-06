@@ -100,7 +100,7 @@ def require_role(*required_roles: UserGroupEnum):
 
 async def get_current_user_profile(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
 ) -> UserProfileModel | None:
     """
     Returns the profile of the current user, or None if not created yet.

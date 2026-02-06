@@ -13,7 +13,7 @@ def process_avatar(file: UploadFile) -> bytes:
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only JPEG, PNG, or WebP images are allowed"
+            detail="Only JPEG, PNG, or WebP images are allowed",
         )
 
     try:
@@ -38,6 +38,5 @@ def process_avatar(file: UploadFile) -> bytes:
 
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image file"
         )

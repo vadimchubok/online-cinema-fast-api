@@ -13,7 +13,8 @@ from src.auth.models import (
     UserGroup,
     UserGroupEnum,
     ActivationTokenModel,
-    RefreshTokenModel, UserProfileModel,
+    RefreshTokenModel,
+    UserProfileModel,
 )
 from src.auth.schemas import (
     LoginRequest,
@@ -21,7 +22,9 @@ from src.auth.schemas import (
     UserResponse,
     TokenLoginResponseSchema,
     UserRegistrationResponseSchema,
-    TokenRefreshRequestSchema, UserProfileResponse, UserProfileCreate,
+    TokenRefreshRequestSchema,
+    UserProfileResponse,
+    UserProfileCreate,
 )
 from src.auth.security import (
     create_access_token,
@@ -294,25 +297,25 @@ async def logout(
     await session.commit()
 
 
-@router.post("/profile/create", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/profile/create",
+    response_model=UserProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_user_profile(
-        profile_data: UserProfileCreate,
-        user: User = Depends(get_current_user),
-        db: AsyncSession = Depends(get_async_session)
+    profile_data: UserProfileCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
 ):
     existing_profile = await db.execute(
         select(UserProfileModel).where(UserProfileModel.user_id == user.id)
     )
     if existing_profile.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Profile already exists"
+            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
         )
 
-    new_profile = UserProfileModel(
-        user_id=user.id,
-        **profile_data.model_dump()
-    )
+    new_profile = UserProfileModel(user_id=user.id, **profile_data.model_dump())
     db.add(new_profile)
 
     try:
@@ -326,13 +329,11 @@ async def create_user_profile(
 
 
 @router.get("/profile", response_model=UserProfileResponse)
-async def get_my_profile(
-        profile: UserProfileModel = Depends(get_current_user_profile)
-):
+async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_profile)):
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_204_NO_CONTENT,
-            detail="Profile not found. Please create one first."
+            detail="Profile not found. Please create one first.",
         )
 
     avatar_url = None
@@ -347,10 +348,10 @@ async def get_my_profile(
 
 @router.patch("/profile/avatar")
 async def update_avatar(
-        file: UploadFile = File(...),
-        user: User = Depends(get_current_user),
-        profile: UserProfileModel = Depends(get_current_user_profile),
-        db: AsyncSession = Depends(get_async_session)
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    profile: UserProfileModel = Depends(get_current_user_profile),
+    db: AsyncSession = Depends(get_async_session),
 ):
     """
     Downloads avatar, deletes old one from S3, updates DB.
@@ -359,7 +360,7 @@ async def update_avatar(
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found. Create profile before uploading avatar."
+            detail="Profile not found. Create profile before uploading avatar.",
         )
 
     processed_image = process_avatar(file)
