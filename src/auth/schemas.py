@@ -25,7 +25,6 @@ class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
-    activation_token: str
 
 
 class LoginRequest(BaseModel):

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +36,8 @@ from src.core.database import get_async_session
 from src.core.s3 import S3Service
 from src.core.utils import process_avatar
 from src.notifications.email import send_email
+from src.notifications.services.sendgrid_webhook import SendGridWebhookService
+from json import JSONDecodeError
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 s3_service = S3Service()
@@ -94,14 +96,16 @@ async def register(
     activation_link = (
         f"http://localhost:8000/api/v1/auth/activate/{activation_token_value}"
     )
-    subject = "Movie cinema activate"
 
-    send_email(new_user.email, subject, activation_link)
+    send_email(
+        to_email=new_user.email,
+        template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
+        data={"activation_link": activation_link},
+    )
     return UserRegistrationResponseSchema(
         id=new_user.id,
         email=new_user.email,
         is_active=new_user.is_active,
-        activation_token=activation_token_value,
     )
 
 
@@ -378,3 +382,26 @@ async def update_avatar(
     new_avatar_url = await s3_service.generate_presigned_url(s3_key)
 
     return {"message": "Avatar updated", "avatar_url": new_avatar_url}
+
+
+@router.post(
+    "/sendgrid",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def sendgrid_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        events = await request.json()
+    except JSONDecodeError:
+        return {"detail": "empty payload ignored"}
+
+    if not isinstance(events, list):
+        return {"detail": "non-event payload ignored"}
+
+    for event in events:
+        await SendGridWebhookService.process_event(event, session)
+
+    await session.commit()
+    return {"status": "ok"}

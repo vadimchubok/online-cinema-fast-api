@@ -26,6 +26,13 @@ class UserGroupEnum(str, Enum):
     ADMIN = "ADMIN"
 
 
+class EmailStatusEnum(str, Enum):
+    PENDING = "pending"
+    DELIVERED = "delivered"
+    BOUNCED = "bounced"
+    COMPLAINED = "complained"
+
+
 class UserGroup(Base):
     __tablename__ = "user_groups"
 
@@ -44,6 +51,16 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
+    )
+    email_status: Mapped[EmailStatusEnum] = mapped_column(
+        String(20),
+        default=EmailStatusEnum.PENDING,
+        nullable=False,
+    )
+    is_email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

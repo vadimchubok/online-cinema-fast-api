@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str | None = None
     EMAIL_FROM: str | None = None
     EMAIL_ENABLED: bool = False
+    SENDGRID_ACTIVATION_TEMPLATE_ID: str | None = None
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.test"), extra="ignore")
 
