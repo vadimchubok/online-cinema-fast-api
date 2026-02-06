@@ -1,17 +1,20 @@
+import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy import select, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.auth.dependencies import get_current_user
+from src.auth.dependencies import get_current_user, get_current_user_profile
 from src.auth.models import (
     User,
     UserGroup,
     UserGroupEnum,
     ActivationTokenModel,
     RefreshTokenModel,
+    UserProfileModel,
 )
 from src.auth.schemas import (
     LoginRequest,
@@ -20,6 +23,8 @@ from src.auth.schemas import (
     TokenLoginResponseSchema,
     UserRegistrationResponseSchema,
     TokenRefreshRequestSchema,
+    UserProfileResponse,
+    UserProfileCreate,
 )
 from src.auth.security import (
     create_access_token,
@@ -28,9 +33,12 @@ from src.auth.security import (
 )
 from src.core.config import settings
 from src.core.database import get_async_session
+from src.core.s3 import S3Service
+from src.core.utils import process_avatar
 from src.notifications.email import send_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+s3_service = S3Service()
 
 
 @router.post(
@@ -287,3 +295,86 @@ async def logout(
         delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
     await session.commit()
+
+
+@router.post(
+    "/profile/create",
+    response_model=UserProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_user_profile(
+    profile_data: UserProfileCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+):
+    existing_profile = await db.execute(
+        select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    )
+    if existing_profile.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
+        )
+
+    new_profile = UserProfileModel(user_id=user.id, **profile_data.model_dump())
+    db.add(new_profile)
+
+    try:
+        await db.commit()
+        await db.refresh(new_profile)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Error creating profile")
+
+    return new_profile
+
+
+@router.get("/profile", response_model=UserProfileResponse)
+async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_profile)):
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_204_NO_CONTENT,
+            detail="Profile not found. Please create one first.",
+        )
+
+    avatar_url = None
+    if profile.avatar:
+        avatar_url = await s3_service.generate_presigned_url(profile.avatar)
+
+    response = UserProfileResponse.model_validate(profile)
+    response.avatar_url = avatar_url
+
+    return response
+
+
+@router.patch("/profile/avatar")
+async def update_avatar(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    profile: UserProfileModel = Depends(get_current_user_profile),
+    db: AsyncSession = Depends(get_async_session),
+):
+    """
+    Downloads avatar, deletes old one from S3, updates DB.
+    If there is no profile, it throws an error (the user must first create a profile).
+    """
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found. Create profile before uploading avatar.",
+        )
+
+    processed_image = process_avatar(file)
+
+    s3_key = f"profiles/{user.id}/{uuid.uuid4()}.webp"
+
+    if profile.avatar:
+        await s3_service.delete_file(profile.avatar)
+
+    await s3_service.upload_file(processed_image, s3_key, "image/webp")
+
+    profile.avatar = s3_key
+    await db.commit()
+
+    new_avatar_url = await s3_service.generate_presigned_url(s3_key)
+
+    return {"message": "Avatar updated", "avatar_url": new_avatar_url}

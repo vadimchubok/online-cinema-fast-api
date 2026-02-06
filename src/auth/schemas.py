@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -40,3 +41,22 @@ class TokenLoginResponseSchema(BaseModel):
 
 class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
+
+
+class UserProfileBase(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    info: Optional[str] = None
+
+
+class UserProfileCreate(UserProfileBase):
+    pass
+
+
+class UserProfileResponse(UserProfileBase):
+    id: int
+    user_id: int
+    avatar_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

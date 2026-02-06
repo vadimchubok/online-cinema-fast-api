@@ -1,4 +1,5 @@
 import aioboto3
+from fastapi import HTTPException, status
 from src.core.config import settings
 
 """
@@ -31,44 +32,56 @@ Front-end should prepend the MinIO endpoint (e.g., http://localhost:9000/avatars
 """
 
 
-class S3Client:
+class S3Service:
     def __init__(self):
         self.session = aioboto3.Session()
         self.config = {
-            "endpoint_url": settings.MINIO_ENDPOINT,
-            "aws_access_key_id": settings.MINIO_ROOT_USER,
-            "aws_secret_access_key": settings.MINIO_ROOT_PASSWORD,
+            "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
             "region_name": settings.AWS_REGION,
         }
-        self.bucket = settings.MINIO_BUCKET_NAME
+        self.bucket_name = settings.S3_BUCKET_NAME
 
-    async def upload_file(self, file_obj, object_name: str):
-        """
-        Asynchronous file upload to MinIO/S3
-        file_obj: can be a file-like object (from FastAPI UploadFile)
-        object_name: the name of the file in the storage ('avatars/user_1.png')
-        """
-        async with self.session.client("s3", **self.config) as s3:
-            try:
-                await s3.upload_fileobj(file_obj, self.bucket, object_name)
-
-                # Generate a public link.
-                # IMPORTANT: If the project is in production, this will be the domain.
-                # For local development, Dev 1 can replace 'minio' with 'localhost' in the MINIO_ENDPOINT.
-                return f"{self.bucket}/{object_name}"
-            except Exception as e:
-                print(f"S3 Upload Error: {e}")
-                return None
+    async def upload_file(
+        self, file_data: bytes, object_name: str, content_type: str
+    ) -> str:
+        try:
+            async with self.session.client("s3", **self.config) as client:
+                await client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=object_name,
+                    Body=file_data,
+                    ContentType=content_type,
+                )
+            return object_name
+        except Exception as e:
+            print(f"S3 Upload Error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error uploading file to storage",
+            )
 
     async def delete_file(self, object_name: str):
-        """Deleting a file from storage"""
-        async with self.session.client("s3", **self.config) as s3:
-            try:
-                await s3.delete_object(Bucket=self.bucket, Key=object_name)
-                return True
-            except Exception as e:
-                print(f"S3 Delete Error: {e}")
-                return False
+        try:
+            async with self.session.client("s3", **self.config) as client:
+                await client.delete_object(Bucket=self.bucket_name, Key=object_name)
+        except Exception as e:
+            print(f"S3 Delete Error: {e}")
+
+    async def generate_presigned_url(
+        self, object_name: str, expiration: int = 3600
+    ) -> str:
+        try:
+            async with self.session.client("s3", **self.config) as client:
+                response = await client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": self.bucket_name, "Key": object_name},
+                    ExpiresIn=expiration,
+                )
+            return response
+        except Exception as e:
+            print(f"S3 Presign Error: {e}")
+            return ""
 
 
-s3_client = S3Client()
+s3_client = S3Service()
