@@ -4,6 +4,7 @@ from src.movies.routers import router as movies_router
 from src.movies.routers import genres_router as genres_router
 from src.movies.routers import stars_router as stars_router
 from src.interactions.router import router as interaction_router
+from src.orders.routers import router as order_router
 
 from src.cart.routers import router as cart_router
 
@@ -15,6 +16,7 @@ app.include_router(stars_router, prefix="/api/v1")
 app.include_router(interaction_router, prefix="/api/v1")
 
 app.include_router(cart_router, prefix="/api/v1")
+app.include_router(order_router, prefix="/api/v1")
 
 
 @app.get("/")
