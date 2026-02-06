@@ -1,7 +1,17 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
+from unittest.mock import patch
 from src.auth.models import User
+
+
+@pytest.fixture(autouse=True)
+def mock_auth_hashing():
+    with patch("src.auth.security.pwd_context.hash") as mock_hash:
+        mock_hash.side_effect = lambda p: f"hashed_{p}"
+        with patch("src.auth.security.pwd_context.verify") as mock_verify:
+            mock_verify.side_effect = lambda p, h: h == f"hashed_{p}"
+            yield
 
 
 @pytest.mark.integration
