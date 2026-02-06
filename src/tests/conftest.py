@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 import pytest
 import asyncio
 import boto3
@@ -7,11 +11,11 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import src.auth.security as security
+import src.auth.security as security # noqa: E402
 
-from src.core.database import Base, get_async_session
-from src.main import app
-from src.auth.models import UserGroup, UserGroupEnum
+from src.core.database import Base, get_async_session # noqa: E402
+from src.main import app # noqa: E402
+from src.auth.models import UserGroup, UserGroupEnum # noqa: E402
 
 security.hash_password = lambda p: f"hashed_{p}"
 security.verify_password = lambda p, h: True
