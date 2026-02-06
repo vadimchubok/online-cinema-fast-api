@@ -335,7 +335,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("cart_id", sa.Integer(), nullable=False),
         sa.Column("movie_id", sa.Integer(), nullable=False),
-        sa.Column("added_at", sa.DateTime(), nullable=False),
+        sa.Column(
+            "added_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(
             ["cart_id"],
             ["carts.id"],
