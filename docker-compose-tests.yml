@@ -28,6 +28,11 @@ services:
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
       - DATABASE_URL_ASYNC=postgresql+asyncpg://test_user:test_password@test_db:5432/test_cinema
+      - MINIO_ENDPOINT=http://minio-theater-test:9000
+      - MINIO_BUCKET_NAME=theater-storage
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=some_password
+      - AWS_REGION=us-east-1
     depends_on:
       mailhog:
         condition: service_started
