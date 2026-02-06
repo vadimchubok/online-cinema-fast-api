@@ -3,22 +3,21 @@ from pydantic import Field
 
 
 class Settings(BaseSettings):
-    POSTGRES_HOST: str
-    POSTGRES_DB_PORT: int
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "test_cinema"
 
     DATABASE_URL_ASYNC: str | None = None
 
-    MINIO_ENDPOINT: str
-    MINIO_ROOT_USER: str
-    MINIO_ROOT_PASSWORD: str
-    MINIO_BUCKET_NAME: str
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
 
-    AWS_ACCESS_KEY_ID: str
-    AWS_SECRET_ACCESS_KEY: str
-    AWS_REGION: str
+    AWS_ACCESS_KEY_ID: str = "testing"
+    AWS_SECRET_ACCESS_KEY: str = "testing"
+    AWS_REGION: str = "eu-north-1"
+    S3_BUCKET_NAME: str = "test-bucket"
 
     @property
     def database_url_async(self) -> str:
