@@ -26,3 +26,6 @@ class OrderRead(BaseModel):
 
 class OrderCreate(BaseModel):
     pass
+
+class MessageSchema(BaseModel):
+    message: str
