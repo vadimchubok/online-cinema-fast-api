@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import ForeignKey, DateTime, Numeric, Enum as SQLEnum
+from sqlalchemy import ForeignKey, DateTime, Numeric, Enum as SQLEnum, func
 from sqlalchemy.orm import Mapped, mapped_column
 from src.core.database import Base
 
@@ -17,7 +17,11 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False)
+
     status: Mapped[OrderStatus] = mapped_column(
         SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False
     )
