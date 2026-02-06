@@ -8,13 +8,33 @@ class GenreBase(BaseModel):
     name: str
 
 
+class GenreCreate(GenreBase):
+    pass
+
+
+class GenreUpdate(BaseModel):
+    name: Optional[str] = None
+
+
 class GenreRead(GenreBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
 
+class GenreReadWithCount(GenreRead):
+    movie_count: int = 0
+
+
 class StarBase(BaseModel):
     name: str
+
+
+class StarCreate(StarBase):
+    pass
+
+
+class StarUpdate(BaseModel):
+    name: Optional[str] = None
 
 
 class StarRead(StarBase):
