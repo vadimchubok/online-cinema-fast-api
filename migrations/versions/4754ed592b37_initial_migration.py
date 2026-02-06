@@ -256,7 +256,12 @@ def upgrade() -> None:
         "orders",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column(
             "status",
             sa.Enum("PENDING", "PAID", "CANCELED", name="orderstatus"),
