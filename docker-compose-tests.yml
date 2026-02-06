@@ -1,50 +1,4 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: ./docker/tests/Dockerfile
-    container_name: backend_theater_test
-    command: [ "pytest", "-c", "/usr/src/config/pytest.ini",
-               "-m", "e2e", "--maxfail=5", "--disable-warnings", "-v", "--tb=short"]
-    environment:
-      - PYTHONPATH=/usr/src/fastapi
-      - DATABASE_URL_ASYNC=postgresql+asyncpg://test_user:test_password@test_db:5432/test_cinema
-      - POSTGRES_HOST=test_db
-      - POSTGRES_DB_PORT=5432
-      - POSTGRES_USER=test_user
-      - POSTGRES_PASSWORD=test_password
-      - POSTGRES_DB=test_cinema
-      - SECRET_KEY_ACCESS=test_secret_key_very_long_string_123
-      - ENVIRONMENT=testing
-      - EMAIL_HOST=mailhog_theater_test
-      - EMAIL_PORT=1025
-      - EMAIL_HOST_USER=testuser@mate.com
-      - EMAIL_HOST_PASSWORD=test_password
-      - EMAIL_USE_TLS=False
-      - MAILHOG_API_PORT=8025
-      - DATABASE_URL_ASYNC=postgresql+asyncpg://test_user:test_password@test_db:5432/test_cinema
-      - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=some_password
-      - AWS_REGION=us-east-1
-    depends_on:
-      mailhog:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    volumes:
-      - .:/usr/src/fastapi
-    networks:
-      - theater_network_test
-
-  mailhog:
-    image: mailhog/mailhog
-    container_name: mailhog_theater_test
-    ports:
-      - "8025:8025"
-      - "1025:1025"
-    networks:
-      - theater_network_test
-
   test_db:
     image: postgres:16-alpine
     container_name: cinema_test_db
@@ -52,18 +6,28 @@ services:
       POSTGRES_USER: test_user
       POSTGRES_PASSWORD: test_password
       POSTGRES_DB: test_cinema
-    networks:
-      - theater_network_test
+    ports:
+      - "5433:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U test_user -d test_cinema" ]
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_cinema"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: always
 
-volumes:
-  minio_data_test:
-    driver: local
-
-networks:
-  theater_network_test:
-    driver: bridge
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinema_backend_test
+    depends_on:
+      test_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=test_db
+      - POSTGRES_PORT=5432
+      - ENVIRONMENT=testing
+    command: >
+      sh -c "python -m pytest -v" 

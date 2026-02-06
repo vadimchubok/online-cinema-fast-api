@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.auth.models import User, UserGroupEnum
+from src.auth.models import User, UserGroupEnum, UserProfileModel
 from src.auth.security import decode_access_token
 from src.core.database import get_async_session
 
@@ -96,3 +96,15 @@ def require_role(*required_roles: UserGroupEnum):
         return current_user
 
     return role_checker
+
+
+async def get_current_user_profile(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> UserProfileModel | None:
+    """
+    Returns the profile of the current user, or None if not created yet.
+    """
+    query = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()

@@ -7,19 +7,30 @@ on:
     branches: [ "develop" ]
 
 jobs:
-  static-checks:
+  ci:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_cinema
         ports:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -44,3 +55,14 @@ jobs:
 
       - name: Run Ruff Format (Check formatting)
         run: poetry run ruff format . --check
+
+      - name: Run Tests
+        env:
+          ENVIRONMENT: testing
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_cinema
+          REDIS_HOST: localhost
+        run: poetry run pytest -v
