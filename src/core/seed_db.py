@@ -7,7 +7,6 @@ from src.movies.models import Certification
 
 async def seed_data():
     async with async_session_maker() as session:
-
         for group in UserGroupEnum:
             stmt = select(UserGroup).where(UserGroup.name == group.value)
             result = await session.execute(stmt)
@@ -22,6 +21,7 @@ async def seed_data():
                 session.add(Certification(name=cert_name))
 
         await session.commit()
+
 
 if __name__ == "__main__":
     asyncio.run(seed_data())
