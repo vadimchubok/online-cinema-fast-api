@@ -38,7 +38,7 @@ Clone repo:
 
 The project uses **pytest** for automated testing. To ensure a clean environment, all tests automatically use an isolated **SQLite in-memory database**, so no extra database configuration is required for running tests.
 
-### 🚀 Local Execution
+### Local Execution
 Ensure that all dependencies are installed via Poetry:
 ```bash
 poetry install
