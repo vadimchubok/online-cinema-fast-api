@@ -7,11 +7,11 @@ sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
 
 
 def send_email(
-        *,
-        to_email: str,
-        template_id: str,
-        data: dict,
-        email_type: str,
+    *,
+    to_email: str,
+    template_id: str,
+    data: dict,
+    email_type: str,
 ) -> None:
     """Send email via SendGrid with dynamic template."""
     if not settings.SENDGRID_API_KEY:

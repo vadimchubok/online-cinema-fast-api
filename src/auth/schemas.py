@@ -44,11 +44,13 @@ class TokenRefreshRequestSchema(BaseModel):
 
 class ActivationRequest(BaseModel):
     """Request schema for account activation."""
+
     token: str
 
 
 class ActivationResponse(BaseModel):
     """Response schema for successful activation."""
+
     detail: str
     email: EmailStr
 

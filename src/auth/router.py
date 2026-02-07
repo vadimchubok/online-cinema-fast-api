@@ -24,7 +24,9 @@ from src.auth.schemas import (
     UserRegistrationResponseSchema,
     TokenRefreshRequestSchema,
     UserProfileResponse,
-    UserProfileCreate, ActivationResponse, ActivationRequest,
+    UserProfileCreate,
+    ActivationResponse,
+    ActivationRequest,
 )
 from src.auth.security import (
     create_access_token,
@@ -101,7 +103,7 @@ async def register(
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
-        email_type="email_activation"
+        email_type="email_activation",
     )
     return UserRegistrationResponseSchema(
         id=new_user.id,
@@ -179,8 +181,8 @@ async def get_me(current_user: User = Depends(get_current_user)):
     description="Activate user account using activation token from email",
 )
 async def activate_user(
-        data: ActivationRequest,
-        session: AsyncSession = Depends(get_async_session),
+    data: ActivationRequest,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Activate user account.
@@ -223,10 +225,7 @@ async def activate_user(
     await session.delete(activation_token)
     await session.commit()
 
-    return ActivationResponse(
-        detail="Account successfully activated",
-        email=user.email
-    )
+    return ActivationResponse(detail="Account successfully activated", email=user.email)
 
 
 @router.post(

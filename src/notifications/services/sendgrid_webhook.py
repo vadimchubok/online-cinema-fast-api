@@ -9,13 +9,12 @@ FATAL_EVENTS = {"bounce", "blocked", "dropped", "spamreport"}
 
 
 class SendGridWebhookService:
-
     @staticmethod
     async def _handle_activation_email_failure(
-            email: str,
-            event_type: str,
-            reason: str | None,
-            session: AsyncSession,
+        email: str,
+        event_type: str,
+        reason: str | None,
+        session: AsyncSession,
     ) -> None:
         """Delete unactivated user or log warning for active user."""
         result = await session.execute(select(User).where(User.email == email))
@@ -27,13 +26,13 @@ class SendGridWebhookService:
         if not user.is_active:
             await session.delete(user)
             logger.warning(
-                f"Deleted unactivated user due to email failure",
-                extra={"email": email, "event": event_type, "reason": reason}
+                "Deleted unactivated user due to email failure",
+                extra={"email": email, "event": event_type, "reason": reason},
             )
         else:
             logger.error(
-                f"Email delivery failed for active user",
-                extra={"email": email, "event": event_type, "reason": reason}
+                "Email delivery failed for active user",
+                extra={"email": email, "event": event_type, "reason": reason},
             )
 
     @staticmethod
