@@ -28,6 +28,14 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}"
         )
 
+    # Property for synchronous connection (Celery)
+    @property
+    def database_url_sync(self) -> str:
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}"
+        )
+
     SECRET_KEY_ACCESS: str = Field(default="super-secret-key", env="SECRET_KEY_ACCESS")
     SECRET_KEY_REFRESH: str | None = Field(
         default="super-refresh-key", env="SECRET_KEY_REFRESH"
