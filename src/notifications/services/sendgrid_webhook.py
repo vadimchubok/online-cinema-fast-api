@@ -37,8 +37,8 @@ class SendGridWebhookService:
 
     @staticmethod
     async def _handle_payment_email_failure(
-            email: str,
-            session: AsyncSession,
+        email: str,
+        session: AsyncSession,
     ) -> None:
         """
         Log payment notification delivery failure.
@@ -51,7 +51,6 @@ class SendGridWebhookService:
 
         if not user:
             return
-
 
     @staticmethod
     async def process_event(event: dict, session: AsyncSession) -> None:
@@ -75,6 +74,4 @@ class SendGridWebhookService:
             )
 
         if email_type == "successful_payment":
-            await SendGridWebhookService._handle_payment_email_failure(
-                email, session
-            )
+            await SendGridWebhookService._handle_payment_email_failure(email, session)
