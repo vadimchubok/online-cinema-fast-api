@@ -14,7 +14,7 @@ from src.auth.models import (
     UserGroupEnum,
     ActivationTokenModel,
     RefreshTokenModel,
-    UserProfileModel,
+    UserProfileModel, PasswordResetTokenModel,
 )
 from src.auth.schemas import (
     LoginRequest,
@@ -27,6 +27,10 @@ from src.auth.schemas import (
     UserProfileCreate,
     ActivationResponse,
     ActivationRequest,
+    PasswordResetResponse,
+    PasswordChangeSchema,
+    PasswordResetConfirmSchema,
+    PasswordResetRequestSchema,
 )
 from src.auth.security import (
     create_access_token,
@@ -40,6 +44,7 @@ from src.core.utils import process_avatar
 from src.notifications.email import send_email
 from src.notifications.services.sendgrid_webhook import SendGridWebhookService
 from json import JSONDecodeError
+from src.auth.validators import validate_passwords_different
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 s3_service = S3Service()
@@ -309,6 +314,173 @@ async def logout(
         delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
     await session.commit()
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Request password reset",
+    description="Send password reset email to user",
+)
+async def request_password_reset(
+        data: PasswordResetRequestSchema,
+        session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Request password reset.
+
+    Sends reset token to user's email if account exists.
+    Returns success even if email not found (security best practice).
+    """
+    result = await session.execute(
+        select(User).where(User.email == data.email)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        return PasswordResetResponse(
+            detail="If the email exists, a password reset link has been sent"
+        )
+
+    if not user.is_active:
+        return PasswordResetResponse(
+            detail="If the email exists, a password reset link has been sent"
+        )
+
+    await session.execute(
+        delete(PasswordResetTokenModel).where(
+            PasswordResetTokenModel.user_id == user.id
+        )
+    )
+
+    reset_token_value = generate_secure_token()
+    reset_token = PasswordResetTokenModel(
+        user_id=user.id,
+        token=reset_token_value,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # 1 hour expiry
+    )
+
+    session.add(reset_token)
+    await session.commit()
+
+    reset_link = f"http://localhost:8000/api/v1/auth/password-reset/confirm?token={reset_token_value}"
+
+    send_email(
+        to_email=user.email,
+        template_id=settings.SENDGRID_PASSWORD_RESET_TEMPLATE_ID,
+        data={"reset_link": reset_link},
+        email_type="password_reset",
+    )
+
+    return PasswordResetResponse(
+        detail="If the email exists, a password reset link has been sent"
+    )
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Confirm password reset",
+    description="Reset password using token from email",
+)
+async def confirm_password_reset(
+        data: PasswordResetConfirmSchema,
+        session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Confirm password reset.
+
+    Validates reset token and sets new password.
+    Token is deleted after successful reset.
+    """
+    result = await session.execute(
+        select(PasswordResetTokenModel)
+        .where(PasswordResetTokenModel.token == data.token)
+        .options(selectinload(PasswordResetTokenModel.user))
+    )
+    reset_token = result.scalar_one_or_none()
+
+    if reset_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    if reset_token.expires_at < datetime.now(timezone.utc):
+        await session.delete(reset_token)
+        await session.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token has expired",
+        )
+
+    user = reset_token.user
+
+    user.password = data.new_password
+
+    await session.delete(reset_token)
+
+    await session.execute(
+        delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+    )
+
+    await session.commit()
+
+    return PasswordResetResponse(detail="Password successfully reset")
+
+
+@router.post(
+    "/password-change",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Change password",
+    description="Change password for authenticated user",
+)
+async def change_password(
+        data: PasswordChangeSchema,
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Change password for authenticated user.
+
+    Requirements:
+    - Current password must be correct
+    - New password must meet complexity requirements
+    - New password must be different from current password
+    - Invalidates all refresh tokens after successful change
+    """
+    if not current_user.verify_password(data.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+
+
+    try:
+        validate_passwords_different(
+            new_password=data.new_password,
+            old_password=None,
+            hashed_old_password=current_user.hashed_password
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    current_user.password = data.new_password
+
+    await session.execute(
+        delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
+    )
+
+    await session.commit()
+
+    return PasswordResetResponse(detail="Password successfully changed")
 
 
 @router.post(
