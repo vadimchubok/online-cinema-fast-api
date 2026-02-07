@@ -101,9 +101,7 @@ async def register(
     await session.commit()
     await session.refresh(new_user)
 
-    activation_link = (
-        "http://localhost:8000/api/v1/auth/activate/"
-    )
+    activation_link = "http://localhost:8000/api/v1/auth/activate/"
 
     send_email(
         to_email=new_user.email,
