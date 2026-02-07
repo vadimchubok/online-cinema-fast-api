@@ -59,11 +59,13 @@ class ActivationResponse(BaseModel):
 
 class PasswordResetRequestSchema(BaseModel):
     """Request schema for password reset."""
+
     email: EmailStr
 
 
 class PasswordResetConfirmSchema(BaseModel):
     """Confirm password reset with token and new password."""
+
     token: str
     new_password: str
 
@@ -76,6 +78,7 @@ class PasswordResetConfirmSchema(BaseModel):
 
 class PasswordChangeSchema(BaseModel):
     """Change password for authenticated user."""
+
     current_password: str
     new_password: str
 
@@ -97,6 +100,7 @@ class PasswordChangeSchema(BaseModel):
 
 class PasswordResetResponse(BaseModel):
     """Response for password reset operations."""
+
     detail: str
 
 

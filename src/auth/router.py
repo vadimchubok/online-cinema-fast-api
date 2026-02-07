@@ -14,7 +14,8 @@ from src.auth.models import (
     UserGroupEnum,
     ActivationTokenModel,
     RefreshTokenModel,
-    UserProfileModel, PasswordResetTokenModel,
+    UserProfileModel,
+    PasswordResetTokenModel,
 )
 from src.auth.schemas import (
     LoginRequest,
@@ -324,8 +325,8 @@ async def logout(
     description="Send password reset email to user",
 )
 async def request_password_reset(
-        data: PasswordResetRequestSchema,
-        session: AsyncSession = Depends(get_async_session),
+    data: PasswordResetRequestSchema,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Request password reset.
@@ -333,9 +334,7 @@ async def request_password_reset(
     Sends reset token to user's email if account exists.
     Returns success even if email not found (security best practice).
     """
-    result = await session.execute(
-        select(User).where(User.email == data.email)
-    )
+    result = await session.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -386,8 +385,8 @@ async def request_password_reset(
     description="Reset password using token from email",
 )
 async def confirm_password_reset(
-        data: PasswordResetConfirmSchema,
-        session: AsyncSession = Depends(get_async_session),
+    data: PasswordResetConfirmSchema,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Confirm password reset.
@@ -440,9 +439,9 @@ async def confirm_password_reset(
     description="Change password for authenticated user",
 )
 async def change_password(
-        data: PasswordChangeSchema,
-        current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_async_session),
+    data: PasswordChangeSchema,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Change password for authenticated user.
@@ -459,12 +458,11 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
-
     try:
         validate_passwords_different(
             new_password=data.new_password,
             old_password=None,
-            hashed_old_password=current_user.hashed_password
+            hashed_old_password=current_user.hashed_password,
         )
     except ValueError as e:
         raise HTTPException(
