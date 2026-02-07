@@ -5,9 +5,12 @@ from fastapi import Request, Depends
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.models import User
 from src.cart.models import Cart, CartItem
 from src.core.config import settings
 from src.core.database import get_async_session
+from src.notifications.email import send_email
+from src.notifications.services.sendgrid_webhook import SendGridWebhookService
 from src.orders.models import Order, OrderStatus, OrderItem
 from src.payments.models import Payment, PaymentStatus, PaymentItem
 
@@ -50,13 +53,18 @@ async def resolve_payment(
         cart = await db.scalar(select(Cart).where(Cart.user_id == user_id))
         if cart:
             await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
+            user = await db.get(User, user_id)
+            user_email = user.email
+            await db.commit()
+            send_email(to_email=user_email,
+                   email_type="successful_payment",
+                   template_id=settings.SENDGRID_PAYMENT_TEMPLATE_ID,
+                   data={"message":"Your payment is successful"})
 
-        await db.commit()
-
-    elif payload.get("type") == "refund.created":
-        payment_to_refund = await db.scalar(
+        elif payload.get("type") == "refund.created":
+            payment_to_refund = await db.scalar(
             select(Payment).where(Payment.payment_intent == obj.get("payment_intent"))
-        )
+            )
         if payment_to_refund:
             payment_to_refund.status = PaymentStatus.REFUNDED
             payment_to_refund.external_payment_id = payload.get("id")
