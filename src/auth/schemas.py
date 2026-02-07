@@ -1,7 +1,9 @@
 from datetime import datetime, date
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+
+from src.auth.validators import validate_password_strength
 
 
 class UserBase(BaseModel):
@@ -53,6 +55,49 @@ class ActivationResponse(BaseModel):
 
     detail: str
     email: EmailStr
+
+
+class PasswordResetRequestSchema(BaseModel):
+    """Request schema for password reset."""
+    email: EmailStr
+
+
+class PasswordResetConfirmSchema(BaseModel):
+    """Confirm password reset with token and new password."""
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        """Validate password strength at schema level."""
+        return validate_password_strength(v)
+
+
+class PasswordChangeSchema(BaseModel):
+    """Change password for authenticated user."""
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        """Validate password strength at schema level."""
+        return validate_password_strength(value)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_passwords_not_same(cls, value: str, info) -> str:
+        """Ensure new password is different from current password."""
+        current_password = info.data.get("current_password")
+        if current_password and value == current_password:
+            raise ValueError("New password must be different from the current password")
+        return value
+
+
+class PasswordResetResponse(BaseModel):
+    """Response for password reset operations."""
+    detail: str
 
 
 class UserProfileBase(BaseModel):
