@@ -20,7 +20,7 @@ def validate_password_strength(password: str) -> str:
 
 
 def validate_passwords_different(
-        new_password: str, old_password: str, hashed_old_password: str = None
+    new_password: str, old_password: str, hashed_old_password: str = None
 ) -> None:
     """
     Validate that new password is different from old password.
@@ -35,8 +35,11 @@ def validate_passwords_different(
 
     if hashed_old_password:
         from src.auth.security import verify_password
+
         if verify_password(new_password, hashed_old_password):
-            raise ValueError("New password must be different from the current password.")
+            raise ValueError(
+                "New password must be different from the current password."
+            )
 
 
 def validate_email(user_email: str) -> str:
