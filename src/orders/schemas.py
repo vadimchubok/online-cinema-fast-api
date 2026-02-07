@@ -26,6 +26,15 @@ class OrderRead(BaseModel):
     payment_url: str
     model_config = ConfigDict(from_attributes=True)
 
+class OrderListSchema(BaseModel):
+    id: int
+    created_at: datetime
+    status: OrderStatus
+    total_amount: Decimal
+    items: List[OrderItemRead]
+    model_config = ConfigDict(from_attributes=True)
+
+
 
 class OrderCreate(BaseModel):
     pass

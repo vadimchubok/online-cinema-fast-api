@@ -17,7 +17,7 @@ from src.orders.exceptions import (
     OrderNotFoundException,
 )
 from src.orders.models import OrderStatus
-from src.orders.schemas import OrderRead, MessageSchema
+from src.orders.schemas import OrderRead, MessageSchema, OrderListSchema
 from src.payments.utils import create_checkout_session
 
 router = APIRouter(prefix="/order", tags=["Order"])
@@ -64,7 +64,7 @@ async def place_new_order(
     )
 
 
-@router.get("/my", response_model=List[OrderRead])
+@router.get("/my", response_model=List[OrderListSchema])
 async def get_user_orders(
     db: Annotated[AsyncSession, Depends(get_async_session)],
     current_user: Annotated[User, Depends(get_current_user)],
@@ -72,7 +72,7 @@ async def get_user_orders(
     return await get_orders(db=db, user_id=current_user.id)
 
 
-@router.get("/", response_model=list[OrderRead], dependencies=[moderator_permission])
+@router.get("/", response_model=list[OrderListSchema], dependencies=[moderator_permission])
 async def get_all_orders(
     db: Annotated[AsyncSession, Depends(get_async_session)],
     user_id: int | None = None,
