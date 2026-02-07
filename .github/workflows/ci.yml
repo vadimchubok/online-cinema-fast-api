@@ -53,8 +53,14 @@ jobs:
       - name: Run Ruff Check (Linter)
         run: poetry run ruff check .
 
+      - name: Run Ruff Check (Linter)
+        run: poetry run ruff format .
+
       - name: Run Ruff Format (Check formatting)
         run: poetry run ruff format . --check
+
+      - name: Run Ruff Check (Linter)
+        run: poetry run ruff check . --fix
 
       - name: Run Tests
         env:

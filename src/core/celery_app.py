@@ -1,5 +1,6 @@
 import os
 from celery import Celery
+from celery.schedules import crontab
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL"))
 
@@ -18,7 +19,7 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     "cleanup_tokens_daily": {
         "task": "src.tasks.auth.delete_expired_tokens",
-        "schedule": float(os.getenv("TOKEN_CLEANUP_INTERVAL", 86400.0)),
+        "schedule": crontab(minute='*/1'),
     },
 }
 
