@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     EMAIL_ENABLED: bool = False
     SENDGRID_ACTIVATION_TEMPLATE_ID: str | None = None
     SENDGRID_PASSWORD_RESET_TEMPLATE_ID: str | None = None
+    SENDGRID_PAYMENT_TEMPLATE_ID: str | None = None
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.test"), extra="ignore")
 
