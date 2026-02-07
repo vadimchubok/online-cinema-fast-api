@@ -42,6 +42,17 @@ class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
 
 
+class ActivationRequest(BaseModel):
+    """Request schema for account activation."""
+    token: str
+
+
+class ActivationResponse(BaseModel):
+    """Response schema for successful activation."""
+    detail: str
+    email: EmailStr
+
+
 class UserProfileBase(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
