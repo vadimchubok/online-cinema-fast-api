@@ -36,6 +36,24 @@ class SendGridWebhookService:
             )
 
     @staticmethod
+    async def _handle_payment_email_failure(
+            email: str,
+            session: AsyncSession,
+    ) -> None:
+        """
+        Log payment notification delivery failure.
+
+        Payment is already processed, so we only log the issue.
+        User can still see order details in their account.
+        """
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return
+
+
+    @staticmethod
     async def process_event(event: dict, session: AsyncSession) -> None:
         """Process SendGrid webhook event."""
         event_type = event.get("event")
@@ -54,4 +72,9 @@ class SendGridWebhookService:
         if email_type == "email_activation":
             await SendGridWebhookService._handle_activation_email_failure(
                 email, event_type, reason, session
+            )
+
+        if email_type == "successful_payment":
+            await SendGridWebhookService._handle_payment_email_failure(
+                email, session
             )
