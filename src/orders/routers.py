@@ -3,6 +3,7 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from stripe import StripeError
 
 from src.auth.dependencies import require_role, get_current_user
 from src.auth.models import UserGroupEnum, User
@@ -17,6 +18,7 @@ from src.orders.exceptions import (
 )
 from src.orders.models import OrderStatus
 from src.orders.schemas import OrderRead, MessageSchema
+from src.payments.utils import create_checkout_session
 
 router = APIRouter(prefix="/order", tags=["Order"])
 
@@ -43,7 +45,23 @@ async def place_new_order(
         OrderAlreadyPendingException,
     ) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return result
+    try:
+        url = await create_checkout_session(
+            order_id=result.id, amount=result.total_amount, user_id=current_user.id
+        )
+    except StripeError as e:
+        raise HTTPException(
+            status_code=400, detail=f"Payment session creation failed: {e.user_message}"
+        )
+
+    return OrderRead(
+        id=result.id,
+        created_at=result.created_at,
+        status=result.status,
+        total_amount=result.total_amount,
+        items=result.items,
+        payment_url=url,
+    )
 
 
 @router.get("/my", response_model=List[OrderRead])

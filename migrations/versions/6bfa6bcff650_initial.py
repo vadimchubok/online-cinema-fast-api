@@ -439,6 +439,7 @@ def upgrade() -> None:
         ),
         sa.Column("amount", sa.DECIMAL(precision=10, scale=2), nullable=False),
         sa.Column("external_payment_id", sa.String(), nullable=True),
+        sa.Column("payment_intent", sa.String(), nullable=True),
         sa.ForeignKeyConstraint(["order_id"], ["orders.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

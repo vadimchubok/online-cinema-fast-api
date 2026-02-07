@@ -23,6 +23,7 @@ class OrderRead(BaseModel):
     status: OrderStatus
     total_amount: Decimal
     items: List[OrderItemRead]
+    payment_url: str
     model_config = ConfigDict(from_attributes=True)
 
 
