@@ -129,6 +129,7 @@ class UserProfileUpdate(BaseModel):
     All fields are optional to support partial updates.
     Only provided fields will be updated in the database.
     """
+
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     date_of_birth: Optional[date] = None

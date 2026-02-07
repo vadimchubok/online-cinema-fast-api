@@ -31,7 +31,8 @@ from src.auth.schemas import (
     PasswordResetResponse,
     PasswordChangeSchema,
     PasswordResetConfirmSchema,
-    PasswordResetRequestSchema, UserProfileUpdate,
+    PasswordResetRequestSchema,
+    UserProfileUpdate,
 )
 from src.auth.security import (
     create_access_token,
@@ -101,7 +102,9 @@ async def register(
     await session.commit()
     await session.refresh(new_user)
 
-    activation_link = f"http://localhost:8000/api/v1/user/activate/{activation_token_value}"
+    activation_link = (
+        f"http://localhost:8000/api/v1/user/activate/{activation_token_value}"
+    )
 
     send_email(
         to_email=new_user.email,
@@ -361,7 +364,9 @@ async def request_password_reset(
     session.add(reset_token)
     await session.commit()
 
-    reset_link = f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token_value}"
+    reset_link = (
+        f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token_value}"
+    )
 
     send_email(
         to_email=user.email,
@@ -530,9 +535,9 @@ async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_pr
 
 @router.patch("/profile", response_model=UserProfileResponse)
 async def update_my_profile(
-        profile_data: UserProfileUpdate,
-        profile: UserProfileModel = Depends(get_current_user_profile),
-        db: AsyncSession = Depends(get_async_session),
+    profile_data: UserProfileUpdate,
+    profile: UserProfileModel = Depends(get_current_user_profile),
+    db: AsyncSession = Depends(get_async_session),
 ):
     """
     Partially update user profile.
