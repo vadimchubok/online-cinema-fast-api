@@ -2,9 +2,10 @@ from typing import Annotated
 
 import stripe
 from fastapi import Request, Depends
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.cart.models import Cart, CartItem
 from src.core.config import settings
 from src.core.database import get_async_session
 from src.orders.models import Order, OrderStatus, OrderItem
@@ -46,6 +47,10 @@ async def resolve_payment(
                 price_at_payment=float(item.price_at_order),
             )
             db.add(payment_item)
+        cart = await db.scalar(select(Cart).where(Cart.user_id == user_id))
+        if cart:
+            await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
+
         await db.commit()
 
     elif payload.get("type") == "refund.created":
