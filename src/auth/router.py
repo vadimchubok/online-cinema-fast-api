@@ -15,6 +15,7 @@ from src.auth.models import (
     ActivationTokenModel,
     RefreshTokenModel,
     UserProfileModel,
+    PasswordResetTokenModel,
 )
 from src.auth.schemas import (
     LoginRequest,
@@ -25,6 +26,12 @@ from src.auth.schemas import (
     TokenRefreshRequestSchema,
     UserProfileResponse,
     UserProfileCreate,
+    ActivationResponse,
+    ActivationRequest,
+    PasswordResetResponse,
+    PasswordChangeSchema,
+    PasswordResetConfirmSchema,
+    PasswordResetRequestSchema,
 )
 from src.auth.security import (
     create_access_token,
@@ -38,8 +45,9 @@ from src.core.utils import process_avatar
 from src.notifications.email import send_email
 from src.notifications.services.sendgrid_webhook import SendGridWebhookService
 from json import JSONDecodeError
+from src.auth.validators import validate_passwords_different
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/user", tags=["User"])
 s3_service = S3Service()
 
 
@@ -93,14 +101,13 @@ async def register(
     await session.commit()
     await session.refresh(new_user)
 
-    activation_link = (
-        f"http://localhost:8000/api/v1/auth/activate/{activation_token_value}"
-    )
+    activation_link = "http://localhost:8000/api/v1/auth/activate/"
 
     send_email(
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
+        email_type="email_activation",
     )
     return UserRegistrationResponseSchema(
         id=new_user.id,
@@ -170,18 +177,26 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get(
-    "/activate/{token}",
+@router.post(
+    "/activate",
+    response_model=ActivationResponse,
+    status_code=status.HTTP_200_OK,
     summary="Activate user account",
-    description="Activate user account using activation token",
+    description="Activate user account using activation token from email",
 )
 async def activate_user(
-    token: str,
+    data: ActivationRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Activate user account.
+
+    User receives activation token via email after registration.
+    This endpoint validates the token and activates the account.
+    """
     result = await session.execute(
         select(ActivationTokenModel)
-        .where(ActivationTokenModel.token == token)
+        .where(ActivationTokenModel.token == data.token)
         .options(selectinload(ActivationTokenModel.user))
     )
 
@@ -212,10 +227,9 @@ async def activate_user(
 
     user.is_active = True
     await session.delete(activation_token)
-
     await session.commit()
 
-    return {"detail": "Account successfully activated"}
+    return ActivationResponse(detail="Account successfully activated", email=user.email)
 
 
 @router.post(
@@ -299,6 +313,170 @@ async def logout(
         delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
     await session.commit()
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Request password reset",
+    description="Send password reset email to user",
+)
+async def request_password_reset(
+    data: PasswordResetRequestSchema,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Request password reset.
+
+    Sends reset token to user's email if account exists.
+    Returns success even if email not found (security best practice).
+    """
+    result = await session.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        return PasswordResetResponse(
+            detail="If the email exists, a password reset link has been sent"
+        )
+
+    if not user.is_active:
+        return PasswordResetResponse(
+            detail="If the email exists, a password reset link has been sent"
+        )
+
+    await session.execute(
+        delete(PasswordResetTokenModel).where(
+            PasswordResetTokenModel.user_id == user.id
+        )
+    )
+
+    reset_token_value = generate_secure_token()
+    reset_token = PasswordResetTokenModel(
+        user_id=user.id,
+        token=reset_token_value,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # 1 hour expiry
+    )
+
+    session.add(reset_token)
+    await session.commit()
+
+    reset_link = f"http://localhost:8000/api/v1/auth/password-reset/confirm?token={reset_token_value}"
+
+    send_email(
+        to_email=user.email,
+        template_id=settings.SENDGRID_PASSWORD_RESET_TEMPLATE_ID,
+        data={"reset_link": reset_link},
+        email_type="password_reset",
+    )
+
+    return PasswordResetResponse(
+        detail="If the email exists, a password reset link has been sent"
+    )
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Confirm password reset",
+    description="Reset password using token from email",
+)
+async def confirm_password_reset(
+    data: PasswordResetConfirmSchema,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Confirm password reset.
+
+    Validates reset token and sets new password.
+    Token is deleted after successful reset.
+    """
+    result = await session.execute(
+        select(PasswordResetTokenModel)
+        .where(PasswordResetTokenModel.token == data.token)
+        .options(selectinload(PasswordResetTokenModel.user))
+    )
+    reset_token = result.scalar_one_or_none()
+
+    if reset_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    if reset_token.expires_at < datetime.now(timezone.utc):
+        await session.delete(reset_token)
+        await session.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token has expired",
+        )
+
+    user = reset_token.user
+
+    user.password = data.new_password
+
+    await session.delete(reset_token)
+
+    await session.execute(
+        delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+    )
+
+    await session.commit()
+
+    return PasswordResetResponse(detail="Password successfully reset")
+
+
+@router.post(
+    "/password-change",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Change password",
+    description="Change password for authenticated user",
+)
+async def change_password(
+    data: PasswordChangeSchema,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Change password for authenticated user.
+
+    Requirements:
+    - Current password must be correct
+    - New password must meet complexity requirements
+    - New password must be different from current password
+    - Invalidates all refresh tokens after successful change
+    """
+    if not current_user.verify_password(data.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+
+    try:
+        validate_passwords_different(
+            new_password=data.new_password,
+            old_password=None,
+            hashed_old_password=current_user.hashed_password,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    current_user.password = data.new_password
+
+    await session.execute(
+        delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
+    )
+
+    await session.commit()
+
+    return PasswordResetResponse(detail="Password successfully changed")
 
 
 @router.post(
@@ -392,13 +570,14 @@ async def sendgrid_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """Handle SendGrid webhook events."""
     try:
         events = await request.json()
     except JSONDecodeError:
-        return {"detail": "empty payload ignored"}
+        return {"status": "error", "detail": "Invalid JSON"}
 
     if not isinstance(events, list):
-        return {"detail": "non-event payload ignored"}
+        return {"status": "error", "detail": "Expected event list"}
 
     for event in events:
         await SendGridWebhookService.process_event(event, session)

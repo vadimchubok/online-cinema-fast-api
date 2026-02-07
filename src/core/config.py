@@ -33,6 +33,14 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}"
         )
 
+    # Property for synchronous connection (Celery)
+    @property
+    def database_url_sync(self) -> str:
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}"
+        )
+
     SECRET_KEY_ACCESS: str = Field(default="super-secret-key", env="SECRET_KEY_ACCESS")
     SECRET_KEY_REFRESH: str | None = Field(
         default="super-refresh-key", env="SECRET_KEY_REFRESH"
@@ -46,6 +54,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str | None = None
     EMAIL_ENABLED: bool = False
     SENDGRID_ACTIVATION_TEMPLATE_ID: str | None = None
+    SENDGRID_PASSWORD_RESET_TEMPLATE_ID: str | None = None
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.test"), extra="ignore")
 
