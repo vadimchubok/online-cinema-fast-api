@@ -64,9 +64,7 @@ async def resolve_payment(
 
     elif payload.get("type") == "refund.created":
         payment_to_refund = await db.scalar(
-            select(Payment).where(
-                Payment.payment_intent == obj.get("payment_intent")
-            )
+            select(Payment).where(Payment.payment_intent == obj.get("payment_intent"))
         )
         print(payment_to_refund)
         if payment_to_refund:
