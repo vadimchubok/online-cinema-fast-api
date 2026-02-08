@@ -44,10 +44,6 @@ class CommentCreate(BaseModel):
     parent_id: int | None = None
 
 
-class CommentUpdate(BaseModel):
-    text: str = Field(..., min_length=1, max_length=5000)
-
-
 class CommentOut(BaseModel):
     id: int
     user_id: int
@@ -78,3 +74,19 @@ class NotificationOut(BaseModel):
 
 class NotificationsListOut(BaseModel):
     items: list[NotificationOut]
+
+
+class RatingSetIn(BaseModel):
+    score: int = Field(..., ge=1, le=10, examples=[10])
+
+
+class RatingSetOut(BaseModel):
+    movie_id: int
+    score: int
+
+
+class RatingSummaryOut(BaseModel):
+    movie_id: int
+    average_score: float | None
+    votes: int
+    my_score: int | None
