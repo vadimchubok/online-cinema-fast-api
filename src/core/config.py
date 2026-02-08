@@ -62,5 +62,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = Field(default="123456789:AABBCCDDEEFF")
     TELEGRAM_ADMIN_CHAT_ID: int = Field(default=123456789)
 
+    BACKEND_URL: str = "http://localhost:8000"
+
 
 settings = Settings()
