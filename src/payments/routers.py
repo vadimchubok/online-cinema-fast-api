@@ -48,7 +48,7 @@ async def refund_payment(
         print(f"ERROR: Payment {payment_id} has no payment_intent ID in DB")
         raise HTTPException(
             status_code=400,
-            detail="Cannot refund: Payment Intent ID is missing in our database"
+            detail="Cannot refund: Payment Intent ID is missing in our database",
         )
 
     try:
@@ -65,7 +65,9 @@ async def refund_payment(
         raise HTTPException(status_code=400, detail=f"Refund failed: {error_msg}")
     except Exception as e:
         print(f"UNEXPECTED ERROR: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error during refund")
+        raise HTTPException(
+            status_code=500, detail="Internal server error during refund"
+        )
 
 
 @router.get(
