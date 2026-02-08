@@ -367,7 +367,9 @@ async def get_rating_summary(
     await _get_movie_or_404(session, movie_id)
 
     avg_stmt = select(func.avg(Rating.score)).where(Rating.movie_id == movie_id)
-    votes_stmt = select(func.count()).select_from(Rating).where(Rating.movie_id == movie_id)
+    votes_stmt = (
+        select(func.count()).select_from(Rating).where(Rating.movie_id == movie_id)
+    )
 
     average_score = (await session.execute(avg_stmt)).scalar_one()
     votes = (await session.execute(votes_stmt)).scalar_one()
