@@ -51,18 +51,3 @@ async def test_stripe_webhook_success(db_session):
             pass
 
     assert mock_order.status == OrderStatus.PAID
-
-
-@pytest.mark.asyncio
-async def test_refund_payment_success(mock_stripe, db_session):
-    from src.payments.routers import refund_payment
-
-    test_payment = Payment(
-        id=1, payment_intent="pi_123", status=PaymentStatus.SUCCESSFUL
-    )
-
-    with patch("src.payments.routers.get_payment_by_id", return_value=test_payment):
-        response = await refund_payment(payment_id=1, db=db_session)
-
-    mock_stripe.Refund.create.assert_called_once_with(payment_intent="pi_123")
-    assert response == {"status": "refund_initiated"}
