@@ -4,6 +4,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.auth.dependencies import get_current_user, require_role
 from src.auth.models import User, UserGroupEnum
 from src.core.database import get_async_session
@@ -36,15 +37,35 @@ async def stripe_webhook(
 async def refund_payment(
     payment_id: int, db: Annotated[AsyncSession, Depends(get_async_session)]
 ):
+    stripe.api_key = settings.STRIPE_API_KEY
+
     try:
         payment = await get_payment_by_id(db, payment_id)
     except PaymentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    if not payment.payment_intent:
+        print(f"ERROR: Payment {payment_id} has no payment_intent ID in DB")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot refund: Payment Intent ID is missing in our database"
+        )
+
     try:
-        stripe.Refund.create(payment_intent=payment.payment_intent)
+        print(f"Attempting Stripe refund for intent: {payment.payment_intent}")
+
+        refund = stripe.Refund.create(payment_intent=payment.payment_intent)
+
+        print(f"Stripe Refund created: {refund.id}")
+        return {"status": "refund_initiated", "refund_id": refund.id}
+
     except StripeError as e:
-        raise HTTPException(status_code=400, detail=f"Refund failed: {e.user_message}")
-    return {"status": "refund_initiated"}
+        error_msg = e.user_message or str(e)
+        print(f"STRIPE SDK ERROR: {error_msg}")
+        raise HTTPException(status_code=400, detail=f"Refund failed: {error_msg}")
+    except Exception as e:
+        print(f"UNEXPECTED ERROR: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error during refund")
 
 
 @router.get(
