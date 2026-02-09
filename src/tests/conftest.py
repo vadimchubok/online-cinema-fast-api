@@ -1,6 +1,7 @@
 import sys
 import os
 
+# Додаємо кореневу директорію проекту до sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import pytest
@@ -17,6 +18,7 @@ from src.core.database import Base, get_async_session
 from src.main import app
 from src.auth.models import User, UserGroup, UserGroupEnum
 from src.auth.security import create_access_token
+
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -55,7 +57,16 @@ async def setup_database():
 def mock_external_services(monkeypatch):
     mock = MagicMock()
     monkeypatch.setattr("redis.asyncio.from_url", lambda *args, **kwargs: mock)
-    monkeypatch.setattr("src.auth.router.send_email", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "src.notifications.email.send_email", lambda *args, **kwargs: None
+    )
+
+    try:
+        monkeypatch.setattr(
+            "src.tasks.email.sync_send_email", lambda *args, **kwargs: "sent"
+        )
+    except (ImportError, AttributeError):
+        pass
 
     class FakeDatetime:
         @classmethod
@@ -63,6 +74,7 @@ def mock_external_services(monkeypatch):
             return datetime.now().replace(tzinfo=None)
 
     monkeypatch.setattr("src.auth.router.datetime", FakeDatetime)
+
     return mock
 
 
