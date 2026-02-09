@@ -56,6 +56,12 @@ async def setup_database():
 @pytest.fixture(scope="function", autouse=True)
 def mock_external_services(monkeypatch):
     mock = MagicMock()
+
+    from src.core.config import settings
+
+    monkeypatch.setattr(settings, "SENDGRID_API_KEY", "fake_sendgrid_key")
+    monkeypatch.setattr(settings, "STRIPE_API_KEY", "fake_stripe_key")
+
     monkeypatch.setattr("redis.asyncio.from_url", lambda *args, **kwargs: mock)
     monkeypatch.setattr(
         "src.notifications.email.send_email", lambda *args, **kwargs: None
@@ -74,7 +80,6 @@ def mock_external_services(monkeypatch):
             return datetime.now().replace(tzinfo=None)
 
     monkeypatch.setattr("src.auth.router.datetime", FakeDatetime)
-
     return mock
 
 
