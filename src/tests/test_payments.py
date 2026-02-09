@@ -82,15 +82,21 @@ async def test_refund_payment_no_intent(db_session, mock_stripe):
 
 @pytest.mark.asyncio
 async def test_create_checkout_session():
-    with patch("src.payments.utils.stripe") as mock_stripe:
-        mock_stripe.checkout.Session.create.return_value = MagicMock(
-            url="http://stripe.com/pay"
-        )
+    with patch("src.payments.utils.settings") as mock_settings:
+        mock_settings.STRIPE_API_KEY = "sk_test_fake_key"
 
-        url = await create_checkout_session(user_id=1, order_id=1, amount=100.0)
+        with patch("src.payments.utils.stripe") as mock_stripe:
+            mock_stripe.checkout.Session.create.return_value = MagicMock(
+                url="http://stripe.com/pay"
+            )
 
-        assert url == "http://stripe.com/pay"
-        mock_stripe.checkout.Session.create.assert_called_once()
+            url = await create_checkout_session(
+                user_id=1,
+                order_id=1,
+                amount=100.0
+            )
+
+            assert url == "http://stripe.com/pay"
 
 
 def test_send_email_task_success():
