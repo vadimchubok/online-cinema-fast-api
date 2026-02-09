@@ -1,11 +1,11 @@
+from src.payments.models import Payment, PaymentStatus
+from src.orders.models import Order, OrderStatus
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 
 from src.auth.models import User
 from src.payments.utils import resolve_payment
-from src.payments.models import Payment, PaymentStatus
-from src.orders.models import Order, OrderStatus
 
 
 @pytest.fixture
