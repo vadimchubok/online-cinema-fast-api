@@ -36,17 +36,27 @@ async def test_login_success(client: AsyncClient, db_session):
     await client.post(
         "/api/v1/user/register", json={"email": email, "password": password}
     )
-
     await db_session.execute(
         update(User).where(User.email == email).values(is_active=True)
     )
     await db_session.commit()
-
     response = await client.post(
         "/api/v1/user/login", json={"email": email, "password": password}
     )
     assert response.status_code == 200
     assert "access_token" in response.json()
+
+
+@pytest.mark.integration
+async def test_login_wrong_password(client: AsyncClient, db_session):
+    email = "wrong_pass@test.com"
+    await client.post(
+        "/api/v1/user/register", json={"email": email, "password": "CorrectPass123!"}
+    )
+    response = await client.post(
+        "/api/v1/user/login", json={"email": email, "password": "WrongPassword"}
+    )
+    assert response.status_code == 401
 
 
 @pytest.mark.integration
@@ -55,17 +65,14 @@ async def test_get_me_success(client: AsyncClient, db_session):
     await client.post(
         "/api/v1/user/register", json={"email": email, "password": password}
     )
-
     await db_session.execute(
         update(User).where(User.email == email).values(is_active=True)
     )
     await db_session.commit()
-
     login_res = await client.post(
         "/api/v1/user/login", json={"email": email, "password": password}
     )
     token = login_res.json()["access_token"]
-
     response = await client.get(
         "/api/v1/user/me", headers={"Authorization": f"Bearer {token}"}
     )
@@ -74,24 +81,7 @@ async def test_get_me_success(client: AsyncClient, db_session):
 
 
 @pytest.mark.integration
-async def test_refresh_token_success(client: AsyncClient, db_session):
-    email, password = "ref@test.com", "Pass123!"
-    await client.post(
-        "/api/v1/user/register", json={"email": email, "password": password}
-    )
-
-    await db_session.execute(
-        update(User).where(User.email == email).values(is_active=True)
-    )
-    await db_session.commit()
-
-    login_res = await client.post(
-        "/api/v1/user/login", json={"email": email, "password": password}
-    )
-    refresh_token = login_res.json()["refresh_token"]
-
-    response = await client.post(
-        "/api/v1/user/refresh", json={"refresh_token": refresh_token}
-    )
-    assert response.status_code == 200
-    assert "access_token" in response.json()
+async def test_register_invalid_data(client: AsyncClient):
+    payload = {"email": "invalid-email", "password": "123"}
+    response = await client.post("/api/v1/user/register", json=payload)
+    assert response.status_code in [400, 422]

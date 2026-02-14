@@ -59,5 +59,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.test"), extra="ignore")
 
+    TELEGRAM_BOT_TOKEN: str = Field(default="123456789:AABBCCDDEEFF")
+    TELEGRAM_ADMIN_CHAT_ID: int = Field(default=123456789)
+
 
 settings = Settings()

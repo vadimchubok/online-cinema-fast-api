@@ -62,13 +62,13 @@ async def resolve_payment(
                 data={"message": "Your payment is successful"},
             )
 
-        elif payload.get("type") == "refund.created":
-            payment_to_refund = await db.scalar(
-                select(Payment).where(
-                    Payment.payment_intent == obj.get("payment_intent")
-                )
-            )
+    elif payload.get("type") == "refund.created":
+        payment_to_refund = await db.scalar(
+            select(Payment).where(Payment.payment_intent == obj.get("payment_intent"))
+        )
+        print(payment_to_refund)
         if payment_to_refund:
+            print(payment_to_refund)
             payment_to_refund.status = PaymentStatus.REFUNDED
             payment_to_refund.external_payment_id = payload.get("id")
             order = await db.get(Order, payment_to_refund.order_id)

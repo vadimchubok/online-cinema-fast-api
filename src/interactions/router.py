@@ -14,6 +14,7 @@ from src.interactions.models import (
     Comment,
     Notification,
     NotificationType,
+    Rating,
 )
 from src.interactions.schemas import (
     FavoritesListOut,
@@ -22,10 +23,12 @@ from src.interactions.schemas import (
     ReactionsSummaryOut,
     CommentCreate,
     CommentOut,
-    CommentUpdate,
     CommentsListOut,
     NotificationOut,
     NotificationsListOut,
+    RatingSetIn,
+    RatingSetOut,
+    RatingSummaryOut,
 )
 from src.movies.models import Movie
 
@@ -277,6 +280,114 @@ async def get_reactions_summary(
     )
 
 
+async def _set_rating(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    movie_id: int,
+    score: int,
+) -> None:
+    result = await session.execute(
+        select(Rating).where(
+            Rating.user_id == user_id,
+            Rating.movie_id == movie_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.score = score
+    else:
+        session.add(Rating(user_id=user_id, movie_id=movie_id, score=score))
+
+    await session.commit()
+
+
+@router.post(
+    "/movies/{movie_id}/rating",
+    response_model=RatingSetOut,
+    summary="Set or update my rating for a movie (1-10)",
+)
+async def set_rating(
+    movie_id: int,
+    payload: RatingSetIn,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> RatingSetOut:
+    await _get_movie_or_404(session, movie_id)
+    await _set_rating(
+        session,
+        user_id=current_user.id,
+        movie_id=movie_id,
+        score=payload.score,
+    )
+    return RatingSetOut(movie_id=movie_id, score=payload.score)
+
+
+@router.delete(
+    "/movies/{movie_id}/rating",
+    response_model=MessageOut,
+    summary="Remove my rating for a movie",
+)
+async def remove_rating(
+    movie_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> MessageOut:
+    await _get_movie_or_404(session, movie_id)
+
+    result = await session.execute(
+        select(Rating).where(
+            Rating.user_id == current_user.id,
+            Rating.movie_id == movie_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No rating to remove",
+        )
+
+    await session.delete(existing)
+    await session.commit()
+    return MessageOut(detail="Rating removed")
+
+
+@router.get(
+    "/movies/{movie_id}/rating",
+    response_model=RatingSummaryOut,
+    summary="Get rating summary for a movie",
+)
+async def get_rating_summary(
+    movie_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> RatingSummaryOut:
+    await _get_movie_or_404(session, movie_id)
+
+    avg_stmt = select(func.avg(Rating.score)).where(Rating.movie_id == movie_id)
+    votes_stmt = (
+        select(func.count()).select_from(Rating).where(Rating.movie_id == movie_id)
+    )
+
+    average_score = (await session.execute(avg_stmt)).scalar_one()
+    votes = (await session.execute(votes_stmt)).scalar_one()
+
+    my_stmt = select(Rating.score).where(
+        Rating.movie_id == movie_id,
+        Rating.user_id == current_user.id,
+    )
+    my_score = (await session.execute(my_stmt)).scalar_one_or_none()
+
+    return RatingSummaryOut(
+        movie_id=movie_id,
+        average_score=float(average_score) if average_score is not None else None,
+        votes=votes,
+        my_score=my_score,
+    )
+
+
 @router.post(
     "/movies/{movie_id}/comments",
     response_model=CommentOut,
@@ -347,31 +458,6 @@ async def list_comments(
     comments = result.scalars().all()
 
     return CommentsListOut(items=[CommentOut.model_validate(c) for c in comments])
-
-
-@router.patch(
-    "/comments/{comment_id}",
-    response_model=CommentOut,
-    summary="Update my comment",
-)
-async def update_comment(
-    comment_id: int,
-    payload: CommentUpdate,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
-) -> CommentOut:
-    comment = await _get_comment_or_404(session, comment_id)
-
-    if comment.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can update only your own comment",
-        )
-
-    comment.text = payload.text
-    await session.commit()
-    await session.refresh(comment)
-    return CommentOut.model_validate(comment)
 
 
 @router.delete(

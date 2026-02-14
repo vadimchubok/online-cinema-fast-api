@@ -1,7 +1,7 @@
 # online-cinema-fast-api
 An online cinema is a digital platform that allows users to select, watch, and purchase access to movies and other video materials via the internet.
 
-# 🎬 Online Cinema API
+# Online Cinema API
 
 
 ## Fast start for developers
@@ -41,45 +41,35 @@ The project uses **pytest** for automated testing. To ensure a clean environment
 ### Local Execution
 Ensure that all dependencies are installed via Poetry:
 ```bash
-poetry install
+    poetry install
 ```
 
 Run all tests:
 ```bash
-poetry run pytest
+    poetry run pytest
 ```
 
 Run tests with a detailed verbose report:
 ```bash
-poetry run pytest -v
+    poetry run pytest -v
 ```
 
 ### Docker Execution
 If you are running the application using Docker Compose, use the following command to run tests inside the container:
 ```bash
-docker-compose exec app poetry run pytest
+    docker-compose exec app poetry run pytest
 ```
 
 ### Code Quality (Linting & Formatting)
 Before creating a Pull Request, please ensure your code adheres to the project's style guide using **Ruff**:
 
 ```bash
-# Check for errors and auto-fix simple issues
-poetry run ruff check . --fix
-
-# Format the code according to project rules
-poetry run ruff format .
+    # Check for errors and auto-fix simple issues
+    poetry run ruff check . --fix
+    
+    # Format the code according to project rules
+    poetry run ruff format .
 ```
-
-### Before commit!!!
-```bash
-  python -m poetry run ruff check .
-  python -m poetry run ruff format .
-````
-
-```bash
-  docker-compose -f docker-compose-tests.yml up --build
-````
 
 The API will then be available at: http://localhost:8000
 Swagger documentation: http://localhost:8000/docs
@@ -147,3 +137,7 @@ src/core — Configuration and DB.
 **Validation**: Pydantic v2 (built into FastAPI).
 
 **Testing**: Pytest + HTTPX
+
+###  **Demo video**
+
+[YouTube](https://www.youtube.com/watch?v=CLcsIiTjtX8)

@@ -1,23 +1,25 @@
 import sys
 import os
+from unittest.mock import MagicMock, patch
 
-# Залишаємо імпорти для коректних шляхів
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import pytest
 import asyncio
 import boto3
-from unittest.mock import MagicMock
 from datetime import datetime
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import insert, select
 from sqlalchemy.pool import StaticPool
 
-from src.core.database import Base, get_async_session
-from src.main import app
-from src.auth.models import User, UserGroup, UserGroupEnum
-from src.auth.security import create_access_token
+
+with patch("sendgrid.SendGridAPIClient"):
+    from src.core.database import Base, get_async_session
+    from src.main import app
+    from src.auth.models import User, UserGroup, UserGroupEnum
+    from src.auth.security import create_access_token
+    from src.core.config import settings
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -54,9 +56,29 @@ async def setup_database():
 
 @pytest.fixture(scope="function", autouse=True)
 def mock_external_services(monkeypatch):
-    mock = MagicMock()
-    monkeypatch.setattr("redis.asyncio.from_url", lambda *args, **kwargs: mock)
-    monkeypatch.setattr("src.auth.router.send_email", lambda *args, **kwargs: None)
+    mock_redis = MagicMock()
+
+    monkeypatch.setattr(settings, "SENDGRID_API_KEY", "fake_key")
+    monkeypatch.setattr(settings, "STRIPE_API_KEY", "fake_key")
+    monkeypatch.setattr(settings, "EMAIL_FROM", "test@test.com")
+
+    monkeypatch.setattr("redis.asyncio.from_url", lambda *args, **kwargs: mock_redis)
+    mock_sg = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 202
+    mock_sg.client.mail.send.post.return_value = mock_response
+
+    monkeypatch.setattr("src.notifications.email.sg", mock_sg)
+    monkeypatch.setattr(
+        "src.notifications.email.send_email", lambda *args, **kwargs: None
+    )
+
+    try:
+        monkeypatch.setattr(
+            "src.tasks.email.sync_send_email", lambda *args, **kwargs: "sent"
+        )
+    except (ImportError, AttributeError):
+        pass
 
     class FakeDatetime:
         @classmethod
@@ -64,7 +86,7 @@ def mock_external_services(monkeypatch):
             return datetime.now().replace(tzinfo=None)
 
     monkeypatch.setattr("src.auth.router.datetime", FakeDatetime)
-    return mock
+    return mock_sg
 
 
 @pytest.fixture
