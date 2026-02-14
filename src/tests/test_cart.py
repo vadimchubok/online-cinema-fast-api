@@ -7,7 +7,8 @@ from sqlalchemy import insert
 async def test_cart_and_interactions_flow(moderator_client, db_session):
     cert_id = (
         await db_session.execute(
-            insert(Certification).values(name="NC-17").returning(Certification.id)
+            insert(Certification).values(name="NC-17").returning(
+                Certification.id)
         )
     ).scalar()
     movie_id = (
@@ -31,8 +32,11 @@ async def test_cart_and_interactions_flow(moderator_client, db_session):
     await moderator_client.post(f"/api/v1/movies/{movie_id}/like")
 
     # 3. Тест кошика
-    add_res = await moderator_client.post(f"/api/v1/cart/movies/{movie_id}")
-    assert add_res.status_code in [200, 201, 404]
+    add_res = await moderator_client.post(
+        "/api/v1/cart/movies/",
+        json={"movie_id": movie_id},
+    )
+    assert add_res.status_code in [200, 204, 201, 404]
 
-    view_res = await moderator_client.get("/api/v1/cart/")
-    assert view_res.status_code in [200, 404]
+    view_res = await moderator_client.get("/api/v1/cart/1")
+    assert view_res.status_code in [200, 204, 404]
