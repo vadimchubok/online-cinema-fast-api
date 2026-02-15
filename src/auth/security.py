@@ -43,7 +43,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: int, user_group: str) -> str:
+def create_access_token(user_id: int, user_group: str | None = None) -> str:
     """
     Create a new access token with a default or specified expiration time.
     """
