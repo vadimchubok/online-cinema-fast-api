@@ -143,6 +143,8 @@ async def moderator_user(db_session):
 
 @pytest.fixture
 async def moderator_client(client, moderator_user):
-    token = create_access_token(moderator_user)
+    token = create_access_token(
+        user_id=moderator_user, user_group=UserGroupEnum.MODERATOR.value
+    )
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
