@@ -4,6 +4,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.schemas import CurrentUserDTO
 from src.core.config import settings
 from src.auth.dependencies import get_current_user, require_role
 from src.auth.models import User, UserGroupEnum
@@ -79,7 +80,7 @@ async def refund_payment(
 )
 async def get_my_payments(
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[CurrentUserDTO, Depends(get_current_user)],
     status: str | None = Query(None, description="Filter by payment status"),
     payment_id: int | None = Query(None, description="Filter by payment ID"),
 ):

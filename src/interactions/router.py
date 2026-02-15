@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
-from src.auth.models import User
+from src.auth.schemas import CurrentUserDTO
 from src.core.database import get_async_session
 from src.interactions.models import (
     Favorite,
@@ -64,7 +64,7 @@ async def _get_comment_or_404(session: AsyncSession, comment_id: int) -> Comment
 )
 async def add_to_favorites(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     await _get_movie_or_404(session, movie_id)
@@ -95,7 +95,7 @@ async def add_to_favorites(
 )
 async def remove_from_favorites(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     result = await session.execute(
@@ -122,7 +122,7 @@ async def remove_from_favorites(
 )
 async def list_favorites(
     q: str | None = Query(default=None, description="Search by movie name"),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> FavoritesListOut:
     stmt = (
@@ -173,7 +173,7 @@ async def _set_reaction(
 )
 async def like_movie(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ReactionSetOut:
     await _get_movie_or_404(session, movie_id)
@@ -193,7 +193,7 @@ async def like_movie(
 )
 async def dislike_movie(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ReactionSetOut:
     await _get_movie_or_404(session, movie_id)
@@ -213,7 +213,7 @@ async def dislike_movie(
 )
 async def remove_reaction(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     result = await session.execute(
@@ -241,7 +241,7 @@ async def remove_reaction(
 )
 async def get_reactions_summary(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ReactionsSummaryOut:
     await _get_movie_or_404(session, movie_id)
@@ -311,7 +311,7 @@ async def _set_rating(
 async def set_rating(
     movie_id: int,
     payload: RatingSetIn,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> RatingSetOut:
     await _get_movie_or_404(session, movie_id)
@@ -331,7 +331,7 @@ async def set_rating(
 )
 async def remove_rating(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     await _get_movie_or_404(session, movie_id)
@@ -361,7 +361,7 @@ async def remove_rating(
 )
 async def get_rating_summary(
     movie_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> RatingSummaryOut:
     await _get_movie_or_404(session, movie_id)
@@ -397,7 +397,7 @@ async def get_rating_summary(
 async def create_comment(
     movie_id: int,
     payload: CommentCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> CommentOut:
     await _get_movie_or_404(session, movie_id)
@@ -467,7 +467,7 @@ async def list_comments(
 )
 async def delete_comment(
     comment_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     comment = await _get_comment_or_404(session, comment_id)
@@ -491,7 +491,7 @@ async def delete_comment(
 async def list_notifications(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> NotificationsListOut:
     stmt = (
@@ -517,7 +517,7 @@ async def list_notifications(
 )
 async def mark_notification_read(
     notification_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
     result = await session.execute(
