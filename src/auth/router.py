@@ -509,15 +509,10 @@ async def create_user_profile(
     current_user: CurrentUserDTO = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    existing_profile = await db.execute(
-        select(UserProfileModel).where(UserProfileModel.user_id == current_user.id)
+    new_profile = UserProfileModel(
+        user_id=current_user.id,
+        **profile_data.model_dump()
     )
-    if existing_profile.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
-        )
-
-    new_profile = UserProfileModel(user_id=current_user.id, **profile_data.model_dump())
     db.add(new_profile)
 
     try:
@@ -525,7 +520,10 @@ async def create_user_profile(
         await db.refresh(new_profile)
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Error creating profile")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Profile already exists"
+        )
 
     return new_profile
 
