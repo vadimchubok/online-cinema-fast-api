@@ -156,13 +156,13 @@ def get_user_group(
     """
     token = credentials.credentials
     payload = decode_access_token(token)
-    if not payload or "group" not in payload:
+    if not payload or "user_group" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return payload["group"]
+    return payload["user_group"]
 
 
 def require_role_from_token(*allowed_roles: UserGroupEnum):
