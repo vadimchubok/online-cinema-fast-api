@@ -68,6 +68,7 @@ async def remove_movie_from_cart(
     except (CartIsNotExistException, MovieNotInCartException) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.delete(
     "/movies/",
     dependencies=[user_permission],
@@ -81,6 +82,7 @@ async def remove_all_movies_from_cart(
         await clear_cart(db=db, user_id=current_user.id)
     except (CartIsNotExistException, CartIsEmptyException) as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get(
     "/{cart_id}",

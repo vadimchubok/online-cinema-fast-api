@@ -90,11 +90,7 @@ async def test_create_checkout_session():
                 url="http://stripe.com/pay"
             )
 
-            url = await create_checkout_session(
-                user_id=1,
-                order_id=1,
-                amount=100.0
-            )
+            url = await create_checkout_session(user_id=1, order_id=1, amount=100.0)
 
             assert url == "http://stripe.com/pay"
 

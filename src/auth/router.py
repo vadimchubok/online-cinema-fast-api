@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from src.auth.dependencies import get_current_user, get_current_user_profile
 from src.auth.models import (
@@ -131,7 +131,11 @@ async def login(
     """
     User login
     """
-    result = await session.execute(select(User).where(User.email == credentials.email))
+    result = await session.execute(
+        select(User)
+        .options(joinedload(User.group))
+        .where(User.email == credentials.email)
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.hashed_password):
@@ -146,7 +150,7 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
-    access_token = create_access_token(user_id=user.id)
+    access_token = create_access_token(user_id=user.id, user_group=user.group.name)
     refresh_token_value = generate_secure_token()
     refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
