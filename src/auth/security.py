@@ -43,13 +43,18 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, user_group: str) -> str:
     """
     Create a new access token with a default or specified expiration time.
     """
     expire = datetime.now() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode = {"sub": str(user_id), "exp": expire, "type": "access"}
+    to_encode = {
+        "sub": str(user_id),
+        "group": user_group,
+        "exp": expire,
+        "type": "access",
+    }
 
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY_ACCESS, algorithm=settings.JWT_SIGNING_ALGORITHM
