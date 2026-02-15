@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.schemas import CurrentUserDTO
 from src.core.config import settings
 from src.auth.dependencies import get_current_user, require_role
-from src.auth.models import User, UserGroupEnum
+from src.auth.models import UserGroupEnum
 from src.core.database import get_async_session
 from src.payments.crud import get_payment_by_id, get_payments
 from src.payments.exceptions import PaymentNotFound
@@ -30,7 +30,7 @@ moderator_permission = Depends(
 async def stripe_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    db: Annotated[AsyncSession, Depends(get_async_session)]
+    db: Annotated[AsyncSession, Depends(get_async_session)],
 ):
     await resolve_payment(request, db, background_tasks)
     return {"status": "success"}

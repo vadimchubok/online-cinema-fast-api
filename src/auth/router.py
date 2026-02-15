@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Request,
+    BackgroundTasks,
+)
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +20,7 @@ from src.auth.dependencies import (
     get_current_user,
     get_current_user_profile,
     get_full_user,
-    get_sendgrid_service
+    get_sendgrid_service,
 )
 from src.auth.models import (
     User,
@@ -36,7 +45,9 @@ from src.auth.schemas import (
     PasswordChangeSchema,
     PasswordResetConfirmSchema,
     PasswordResetRequestSchema,
-    UserProfileUpdate, CurrentUserDTO, UserMeResponse,
+    UserProfileUpdate,
+    CurrentUserDTO,
+    UserMeResponse,
 )
 from src.auth.security import (
     create_access_token,
@@ -56,7 +67,7 @@ s3_service = S3Service()
 
 
 @router.post(
-    "/register",
+    "/register/",
     response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Register new user",
@@ -65,10 +76,12 @@ s3_service = S3Service()
 async def register(
     user_data: UserCreate,
     background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Register new user
+    Creates a new user account with the provided email and password.
+    User account is created in inactive state and requires email activation.
     """
     if user_data.user_group:
         result = await session.execute(
@@ -79,7 +92,7 @@ async def register(
         if not user_group:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User group '{user_data.user_group}' not found"
+                detail=f"User group '{user_data.user_group}' not found",
             )
     else:
         result = await session.execute(
@@ -99,9 +112,7 @@ async def register(
     )
     new_user.password = user_data.password
 
-    activation_token = ActivationTokenModel(
-        user=new_user
-    )
+    activation_token = ActivationTokenModel(user=new_user)
 
     session.add(new_user)
     session.add(activation_token)
@@ -114,8 +125,7 @@ async def register(
     except IntegrityError:
         await session.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     activation_link = (
@@ -127,7 +137,7 @@ async def register(
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
-        email_type="email_activation"
+        email_type="email_activation",
     )
     return UserRegistrationResponseSchema(
         id=new_user.id,
@@ -137,7 +147,7 @@ async def register(
 
 
 @router.post(
-    "/login",
+    "/login/",
     response_model=TokenLoginResponseSchema,
     summary="Login",
     description="Login and receive access token. Refresh token is issued together.",
@@ -146,7 +156,10 @@ async def login(
     credentials: LoginRequest, session: AsyncSession = Depends(get_async_session)
 ):
     """
-    User login
+    Authenticate user and generate JWT tokens.
+
+    Validates user credentials and returns access and refresh tokens.
+    User must have an activated account to login.
     """
     result = await session.execute(
         select(User)
@@ -188,20 +201,23 @@ async def login(
 
 
 @router.get(
-    "/me",
+    "/me/",
     response_model=UserMeResponse,
     summary="Get current user",
     description="Get information about currently authenticated user",
 )
 async def get_me(current_user: CurrentUserDTO = Depends(get_current_user)):
     """
-    Get info about current user
+    Get current authenticated user information.
+
+    Retrieves user data from JWT token without database query.
+    Fast and efficient endpoint for getting current user details.
     """
     return current_user
 
 
 @router.post(
-    "/activate",
+    "/activate/",
     response_model=ActivationResponse,
     status_code=status.HTTP_200_OK,
     summary="Activate user account",
@@ -256,7 +272,7 @@ async def activate_user(
 
 
 @router.post(
-    "/refresh",
+    "/refresh/",
     response_model=TokenLoginResponseSchema,
     summary="Refresh access token",
     description="Rotate refresh token and issue a new access token",
@@ -265,6 +281,12 @@ async def refresh_access_token(
     data: TokenRefreshRequestSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Refresh expired access token using refresh token.
+
+    Implements refresh token rotation for enhanced security.
+    Old refresh token is deleted and new one is issued.
+    """
 
     result = await session.execute(
         select(RefreshTokenModel)
@@ -323,7 +345,7 @@ async def refresh_access_token(
 
 
 @router.post(
-    "/logout",
+    "/logout/",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Logout",
     description="Logout current user and revoke all refresh tokens",
@@ -332,6 +354,12 @@ async def logout(
     current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Logout user and invalidate all refresh tokens.
+
+    Deletes all refresh tokens for the current user from database.
+    This prevents further token refresh until user logs in again.
+    """
     await session.execute(
         delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
@@ -339,7 +367,7 @@ async def logout(
 
 
 @router.post(
-    "/password-reset/request",
+    "/password-reset/request/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Request password reset",
@@ -388,7 +416,7 @@ async def request_password_reset(
         to_email=user.email,
         template_id=settings.SENDGRID_PASSWORD_RESET_TEMPLATE_ID,
         data={"reset_link": reset_link},
-        email_type="password_reset"
+        email_type="password_reset",
     )
 
     return PasswordResetResponse(
@@ -397,7 +425,7 @@ async def request_password_reset(
 
 
 @router.post(
-    "/password-reset/confirm",
+    "/password-reset/confirm/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Confirm password reset",
@@ -451,7 +479,7 @@ async def confirm_password_reset(
 
 
 @router.post(
-    "/password-change",
+    "/password-change/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Change password",
@@ -501,7 +529,7 @@ async def change_password(
 
 
 @router.post(
-    "/profile/create",
+    "/profile/create/",
     response_model=UserProfileResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -510,10 +538,13 @@ async def create_user_profile(
     current_user: CurrentUserDTO = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    new_profile = UserProfileModel(
-        user_id=current_user.id,
-        **profile_data.model_dump()
-    )
+    """
+    Create profile for current user.
+
+    Creates a new profile with optional personal information.
+    Each user can have only one profile.
+    """
+    new_profile = UserProfileModel(user_id=current_user.id, **profile_data.model_dump())
     db.add(new_profile)
 
     try:
@@ -522,15 +553,19 @@ async def create_user_profile(
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Profile already exists"
+            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
         )
 
     return new_profile
 
 
-@router.get("/profile", response_model=UserProfileResponse)
+@router.get("/profile/", response_model=UserProfileResponse)
 async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_profile)):
+    """
+    Get current user's profile.
+
+    Retrieves profile information with pre-signed avatar URL if avatar exists.
+    """
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_204_NO_CONTENT,
@@ -547,7 +582,7 @@ async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_pr
     return response
 
 
-@router.patch("/profile", response_model=UserProfileResponse)
+@router.patch("/profile/", response_model=UserProfileResponse)
 async def update_my_profile(
     profile_data: UserProfileUpdate,
     profile: UserProfileModel = Depends(get_current_user_profile),
@@ -598,7 +633,7 @@ async def update_my_profile(
     return response
 
 
-@router.patch("/profile/avatar")
+@router.patch("/profile/avatar/")
 async def update_avatar(
     file: UploadFile = File(...),
     current_user: CurrentUserDTO = Depends(get_current_user),
@@ -633,7 +668,7 @@ async def update_avatar(
 
 
 @router.post(
-    "/sendgrid",
+    "/sendgrid/",
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def sendgrid_webhook(
@@ -641,7 +676,11 @@ async def sendgrid_webhook(
     session: AsyncSession = Depends(get_async_session),
     sendgrid_service: SendGridWebhookService = Depends(get_sendgrid_service),
 ):
-    """Handle SendGrid webhook events."""
+    """
+    Handle SendGrid webhook events.
+    Processes email delivery events from SendGrid (bounce, delivered, etc.).
+    Used for email delivery monitoring and user cleanup.
+    """
     try:
         events = await request.json()
     except JSONDecodeError:

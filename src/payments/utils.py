@@ -15,9 +15,9 @@ from src.payments.models import Payment, PaymentStatus, PaymentItem
 
 
 async def resolve_payment(
-        request: Request,
-        db: Annotated[AsyncSession, Depends(get_async_session)],
-        background_tasks: BackgroundTasks
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_async_session)],
+    background_tasks: BackgroundTasks,
 ):
     payload = await request.json()
     obj = payload.get("data").get("object")
@@ -62,7 +62,7 @@ async def resolve_payment(
                 to_email=user_email,
                 email_type="successful_payment",
                 template_id=settings.SENDGRID_PAYMENT_TEMPLATE_ID,
-                data={"message": "Your payment is successful"}
+                data={"message": "Your payment is successful"},
             )
 
     elif payload.get("type") == "refund.created":

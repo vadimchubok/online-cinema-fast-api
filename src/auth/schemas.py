@@ -31,7 +31,6 @@ class UserRegistrationResponseSchema(BaseModel):
 
 
 class CurrentUserDTO(BaseModel):
-
     id: int
     email: str
     user_group: str

@@ -6,6 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from src.core.config import settings
+
 if TYPE_CHECKING:
     from src.auth.models import User
 
@@ -67,7 +68,7 @@ def create_access_token(user: "User" = None) -> str:
         "user_group": user.group.name,
         "is_active": user.is_active,
         "exp": expire,
-        "type": "access"
+        "type": "access",
     }
 
     encoded_jwt = jwt.encode(

@@ -146,9 +146,7 @@ async def moderator_user(db_session):
 @pytest.fixture
 async def moderator_client(client, moderator_user, db_session):
     result = await db_session.execute(
-        select(User)
-        .options(selectinload(User.group))
-        .where(User.id == moderator_user)
+        select(User).options(selectinload(User.group)).where(User.id == moderator_user)
     )
     user = result.scalar_one()
 

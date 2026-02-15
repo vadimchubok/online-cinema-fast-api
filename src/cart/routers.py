@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import require_role, get_current_user
-from src.auth.models import UserGroupEnum, User
+from src.auth.models import UserGroupEnum
 from src.auth.schemas import CurrentUserDTO
 from src.cart.exceptions import (
     MovieAlreadyPurchasedException,
