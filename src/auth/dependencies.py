@@ -8,7 +8,7 @@ from src.auth.models import User, UserGroupEnum, UserProfileModel
 from src.auth.security import decode_access_token
 from src.core.database import get_async_session
 from src.auth.schemas import CurrentUserDTO
-
+from src.notifications.services.sendgrid_webhook import SendGridWebhookService
 
 security = HTTPBearer()
 
@@ -182,3 +182,13 @@ def require_role_from_token(*allowed_roles: UserGroupEnum):
             )
 
     return role_checker
+
+
+def get_sendgrid_service() -> SendGridWebhookService:
+    """
+    Dependency for get SendGrid webhook service instance.
+
+    Returns:
+        SendGridWebhookService: Instance of service for work with SendGrid webhooks
+    """
+    return SendGridWebhookService()

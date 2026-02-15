@@ -11,8 +11,9 @@ FATAL_EVENTS = {"bounce", "blocked", "dropped", "spamreport"}
 
 
 class SendGridWebhookService:
-    @staticmethod
-    async def _handle_activation_email_failure(
+
+    async def handle_activation_email_failure(
+        self,
         email: str,
         event_type: str,
         reason: str | None,
@@ -44,8 +45,8 @@ class SendGridWebhookService:
                 msg_gen.get_active_user_error_message(email, event_type, reason)
             )
 
-    @staticmethod
-    async def _handle_payment_email_failure(
+    async def handle_payment_email_failure(
+        self,
         email: str,
         event_type: str,
         reason: str | None,
@@ -66,8 +67,8 @@ class SendGridWebhookService:
             msg_gen.get_payment_failure_message(email, event_type, reason)
         )
 
-    @staticmethod
-    async def process_event(event: dict, session: AsyncSession) -> None:
+
+    async def process_event(self, event: dict, session: AsyncSession) -> None:
         """Process SendGrid webhook event."""
         event_type = event.get("event")
         email = event.get("email")
@@ -85,11 +86,9 @@ class SendGridWebhookService:
             return
 
         if email_type == "email_activation":
-            await SendGridWebhookService._handle_activation_email_failure(
+            await self.handle_activation_email_failure(
                 email, event_type, reason, session
             )
 
         elif email_type == "successful_payment":
-            await SendGridWebhookService._handle_payment_email_failure(
-                email, event_type, reason, session
-            )
+            await self.handle_payment_email_failure(email, event_type, reason, session)

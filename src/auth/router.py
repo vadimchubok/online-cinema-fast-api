@@ -7,7 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.auth.dependencies import get_current_user, get_current_user_profile, get_full_user
+from src.auth.dependencies import (
+    get_current_user,
+    get_current_user_profile,
+    get_full_user,
+    get_sendgrid_service
+)
 from src.auth.models import (
     User,
     UserGroup,
@@ -635,6 +640,7 @@ async def update_avatar(
 async def sendgrid_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
+    sendgrid_service: SendGridWebhookService = Depends(get_sendgrid_service),
 ):
     """Handle SendGrid webhook events."""
     try:
@@ -646,7 +652,7 @@ async def sendgrid_webhook(
         return {"status": "error", "detail": "Expected event list"}
 
     for event in events:
-        await SendGridWebhookService.process_event(event, session)
+        await sendgrid_service.process_event(event, session)
 
     await session.commit()
     return {"status": "ok"}
