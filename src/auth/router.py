@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.auth.dependencies import get_current_user, get_current_user_profile
+from src.auth.dependencies import get_current_user, get_current_user_profile, get_full_user
 from src.auth.models import (
     User,
     UserGroup,
@@ -32,7 +32,7 @@ from src.auth.schemas import (
     PasswordChangeSchema,
     PasswordResetConfirmSchema,
     PasswordResetRequestSchema,
-    UserProfileUpdate,
+    UserProfileUpdate, CurrentUserDTO, UserMeResponse,
 )
 from src.auth.security import (
     create_access_token,
@@ -140,7 +140,11 @@ async def login(
     """
     User login
     """
-    result = await session.execute(select(User).where(User.email == credentials.email))
+    result = await session.execute(
+        select(User)
+        .options(selectinload(User.group))
+        .where(User.email == credentials.email)
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.hashed_password):
@@ -155,7 +159,7 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
-    access_token = create_access_token(user_id=user.id)
+    access_token = create_access_token(user=user)
     refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
@@ -177,11 +181,11 @@ async def login(
 
 @router.get(
     "/me",
-    response_model=UserResponse,
+    response_model=UserMeResponse,
     summary="Get current user",
     description="Get information about currently authenticated user",
 )
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: CurrentUserDTO = Depends(get_current_user)):
     """
     Get info about current user
     """
@@ -278,6 +282,8 @@ async def refresh_access_token(
 
     user = refresh_token.user
 
+    await session.refresh(user, ["group"])
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -297,7 +303,7 @@ async def refresh_access_token(
 
     session.add(new_refresh)
     await session.flush()
-    new_access_token = create_access_token(user_id=user.id)
+    new_access_token = create_access_token(user=user)
 
     await session.commit()
 
@@ -315,7 +321,7 @@ async def refresh_access_token(
     description="Logout current user and revoke all refresh tokens",
 )
 async def logout(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     await session.execute(
@@ -447,7 +453,7 @@ async def confirm_password_reset(
 )
 async def change_password(
     data: PasswordChangeSchema,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_full_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -495,18 +501,18 @@ async def change_password(
 )
 async def create_user_profile(
     profile_data: UserProfileCreate,
-    user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ):
     existing_profile = await db.execute(
-        select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+        select(UserProfileModel).where(UserProfileModel.user_id == current_user.id)
     )
     if existing_profile.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
         )
 
-    new_profile = UserProfileModel(user_id=user.id, **profile_data.model_dump())
+    new_profile = UserProfileModel(user_id=current_user.id, **profile_data.model_dump())
     db.add(new_profile)
 
     try:
@@ -591,7 +597,7 @@ async def update_my_profile(
 @router.patch("/profile/avatar")
 async def update_avatar(
     file: UploadFile = File(...),
-    user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     profile: UserProfileModel = Depends(get_current_user_profile),
     db: AsyncSession = Depends(get_async_session),
 ):
@@ -607,7 +613,7 @@ async def update_avatar(
 
     processed_image = process_avatar(file)
 
-    s3_key = f"profiles/{user.id}/{uuid.uuid4()}.webp"
+    s3_key = f"profiles/{current_user.id}/{uuid.uuid4()}.webp"
 
     if profile.avatar:
         await s3_service.delete_file(profile.avatar)

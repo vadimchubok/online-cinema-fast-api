@@ -39,6 +39,16 @@ class CurrentUserDTO(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class UserMeResponse(BaseModel):
+    id: int
+    email: str
+    is_active: bool
+    user_group: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
