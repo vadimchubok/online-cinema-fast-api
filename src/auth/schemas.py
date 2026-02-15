@@ -30,6 +30,15 @@ class UserRegistrationResponseSchema(BaseModel):
     is_active: bool
 
 
+class CurrentUserDTO(BaseModel):
+
+    id: int
+    email: str
+    user_group: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
