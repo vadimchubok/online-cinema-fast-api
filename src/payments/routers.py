@@ -1,7 +1,7 @@
 from typing import Annotated, List
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
@@ -27,9 +27,11 @@ moderator_permission = Depends(
 
 @router.post("/stripe/webhook")
 async def stripe_webhook(
-    request: Request, db: Annotated[AsyncSession, Depends(get_async_session)]
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Annotated[AsyncSession, Depends(get_async_session)]
 ):
-    await resolve_payment(request, db)
+    await resolve_payment(request, db, background_tasks)
     return {"status": "success"}
 
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, BackgroundTasks
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,7 +59,9 @@ s3_service = S3Service()
     description="Register a new user. User must activate account via activation token.",
 )
 async def register(
-    user_data: UserCreate, session: AsyncSession = Depends(get_async_session)
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     Register new user
@@ -115,11 +117,12 @@ async def register(
         f"http://localhost:8000/api/v1/user/activate/{activation_token.token}"
     )
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
-        email_type="email_activation",
+        email_type="email_activation"
     )
     return UserRegistrationResponseSchema(
         id=new_user.id,
@@ -339,6 +342,7 @@ async def logout(
 )
 async def request_password_reset(
     data: PasswordResetRequestSchema,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -350,12 +354,7 @@ async def request_password_reset(
     result = await session.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
-    if not user:
-        return PasswordResetResponse(
-            detail="If the email exists, a password reset link has been sent"
-        )
-
-    if not user.is_active:
+    if not user or not user.is_active:
         return PasswordResetResponse(
             detail="If the email exists, a password reset link has been sent"
         )
@@ -378,11 +377,12 @@ async def request_password_reset(
         f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token.token}"
     )
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=user.email,
         template_id=settings.SENDGRID_PASSWORD_RESET_TEMPLATE_ID,
         data={"reset_link": reset_link},
-        email_type="password_reset",
+        email_type="password_reset"
     )
 
     return PasswordResetResponse(
