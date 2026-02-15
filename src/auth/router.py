@@ -64,24 +64,28 @@ async def register(
     """
     Register new user
     """
-    result = await session.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+    if user_data.user_group:
+        result = await session.execute(
+            select(UserGroup).where(UserGroup.name == user_data.user_group)
         )
+        user_group = result.scalar_one_or_none()
 
-    result = await session.execute(
-        select(UserGroup).where(UserGroup.name == UserGroupEnum.USER.value)
-    )
-    user_group = result.scalar_one_or_none()
-
-    if not user_group:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User group not found. Please run database migrations first.",
+        if not user_group:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User group '{user_data.user_group}' not found"
+            )
+    else:
+        result = await session.execute(
+            select(UserGroup).where(UserGroup.name == UserGroupEnum.USER.value)
         )
+        user_group = result.scalar_one_or_none()
+
+        if not user_group:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Default user group not found. Please run database migrations first.",
+            )
 
     new_user = User(
         email=str(user_data.email),
@@ -96,8 +100,16 @@ async def register(
     session.add(new_user)
     session.add(activation_token)
     await session.flush()
-    await session.commit()
-    await session.refresh(new_user)
+
+    try:
+        await session.commit()
+        await session.refresh(new_user)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
 
     activation_link = (
         f"http://localhost:8000/api/v1/user/activate/{activation_token.token}"

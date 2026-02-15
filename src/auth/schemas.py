@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    user_group: Optional[str] = None
 
 
 class UserResponse(UserBase):
