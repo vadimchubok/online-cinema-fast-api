@@ -2,6 +2,8 @@ import sys
 import os
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.orm import selectinload
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import pytest
@@ -142,9 +144,14 @@ async def moderator_user(db_session):
 
 
 @pytest.fixture
-async def moderator_client(client, moderator_user):
-    token = create_access_token(
-        user_id=moderator_user, user_group=UserGroupEnum.MODERATOR.value
+async def moderator_client(client, moderator_user, db_session):
+    result = await db_session.execute(
+        select(User)
+        .options(selectinload(User.group))
+        .where(User.id == moderator_user)
     )
+    user = result.scalar_one()
+
+    token = create_access_token(user=user)
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client

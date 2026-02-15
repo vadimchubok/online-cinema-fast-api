@@ -36,7 +36,8 @@ async def test_additional_app_logic(client, db_session):
     await db_session.refresh(user)
     await db_session.refresh(movie)
 
-    token = create_access_token(user.id)
+    await db_session.refresh(user, ["group"])
+    token = create_access_token(user=user)
     headers = {"Authorization": f"Bearer {token}"}
 
     await client.get("/api/v1/user/me", headers=headers)

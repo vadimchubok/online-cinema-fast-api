@@ -25,7 +25,6 @@ from src.auth.models import (
 from src.auth.schemas import (
     LoginRequest,
     UserCreate,
-    UserResponse,
     TokenLoginResponseSchema,
     UserRegistrationResponseSchema,
     TokenRefreshRequestSchema,
@@ -106,9 +105,10 @@ async def register(
 
     session.add(new_user)
     session.add(activation_token)
-    await session.flush()
 
     try:
+        await session.flush()
+        activation_token_value = activation_token.token
         await session.commit()
         await session.refresh(new_user)
     except IntegrityError:
@@ -119,7 +119,7 @@ async def register(
         )
 
     activation_link = (
-        f"http://localhost:8000/api/v1/user/activate/{activation_token.token}"
+        f"http://localhost:8000/api/v1/user/activate/{activation_token_value}"
     )
 
     background_tasks.add_task(
@@ -376,10 +376,11 @@ async def request_password_reset(
 
     session.add(reset_token)
     await session.flush()
+    reset_token_value = reset_token.token
     await session.commit()
 
     reset_link = (
-        f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token.token}"
+        f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token_value}"
     )
 
     background_tasks.add_task(
