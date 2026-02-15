@@ -7,8 +7,7 @@ from sqlalchemy import insert
 async def test_cart_and_interactions_flow(moderator_client, db_session):
     cert_id = (
         await db_session.execute(
-            insert(Certification).values(name="NC-17").returning(
-                Certification.id)
+            insert(Certification).values(name="NC-17").returning(Certification.id)
         )
     ).scalar()
     movie_id = (
