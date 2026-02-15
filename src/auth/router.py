@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 
 from src.auth.dependencies import get_current_user, get_current_user_profile
 from src.auth.models import (
@@ -37,7 +37,6 @@ from src.auth.schemas import (
 from src.auth.security import (
     create_access_token,
     verify_password,
-    generate_secure_token,
 )
 from src.core.config import settings
 from src.core.database import get_async_session
@@ -90,20 +89,18 @@ async def register(
     )
     new_user.password = user_data.password
 
-    activation_token_value = generate_secure_token()
     activation_token = ActivationTokenModel(
-        user=new_user,
-        token=activation_token_value,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        user=new_user
     )
 
     session.add(new_user)
     session.add(activation_token)
+    await session.flush()
     await session.commit()
     await session.refresh(new_user)
 
     activation_link = (
-        f"http://localhost:8000/api/v1/user/activate/{activation_token_value}"
+        f"http://localhost:8000/api/v1/user/activate/{activation_token.token}"
     )
 
     send_email(
@@ -131,11 +128,7 @@ async def login(
     """
     User login
     """
-    result = await session.execute(
-        select(User)
-        .options(joinedload(User.group))
-        .where(User.email == credentials.email)
-    )
+    result = await session.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.hashed_password):
@@ -150,24 +143,23 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
-    access_token = create_access_token(user_id=user.id, user_group=user.group.name)
-    refresh_token_value = generate_secure_token()
+    access_token = create_access_token(user_id=user.id)
     refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     refresh_token = RefreshTokenModel(
         user_id=user.id,
-        token=refresh_token_value,
         expires_at=refresh_expires_at,
     )
 
     session.add(refresh_token)
+    await session.flush()
     await session.commit()
 
     return TokenLoginResponseSchema(
         access_token=access_token,
-        refresh_token=refresh_token_value,
+        refresh_token=refresh_token.token,
     )
 
 
@@ -282,26 +274,24 @@ async def refresh_access_token(
 
     await session.delete(refresh_token)
 
-    new_refresh_value = generate_secure_token()
     new_refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     new_refresh = RefreshTokenModel(
         user_id=user.id,
-        token=new_refresh_value,
         expires_at=new_refresh_expires_at,
     )
 
     session.add(new_refresh)
-
+    await session.flush()
     new_access_token = create_access_token(user_id=user.id)
 
     await session.commit()
 
     return {
         "access_token": new_access_token,
-        "refresh_token": new_refresh_value,
+        "refresh_token": new_refresh.token,
         "token_type": "bearer",
     }
 
@@ -358,18 +348,16 @@ async def request_password_reset(
         )
     )
 
-    reset_token_value = generate_secure_token()
     reset_token = PasswordResetTokenModel(
         user_id=user.id,
-        token=reset_token_value,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # 1 hour expiry
     )
 
     session.add(reset_token)
+    await session.flush()
     await session.commit()
 
     reset_link = (
-        f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token_value}"
+        f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token.token}"
     )
 
     send_email(
