@@ -26,6 +26,7 @@ from src.interactions.schemas import (
     FavoritesListOut,
     FavoriteIn,
     MessageOut,
+    ReactionSetIn,
     ReactionSetOut,
     ReactionsSummaryOut,
     CommentCreateIn,
@@ -53,7 +54,7 @@ async def add_to_favorites(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
-    await _get_movie_or_404(session, payload.movie_id)
+    await get_movie_or_404(session, payload.movie_id)
 
     result = await session.execute(
         select(Favorite).where(
@@ -137,11 +138,11 @@ async def set_movie_reaction(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ReactionSetOut:
-    await _get_movie_or_404(session, payload.movie_id)
+    await get_movie_or_404(session, payload.movie_id)
     reaction = (
         ReactionType.LIKE if payload.reaction == "LIKE" else ReactionType.DISLIKE
     )
-    await _set_reaction(
+    await set_reaction(
         session,
         user_id=current_user.id,
         movie_id=payload.movie_id,
@@ -188,7 +189,7 @@ async def get_reactions_summary(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> ReactionsSummaryOut:
-    await _get_movie_or_404(session, movie_id)
+    await get_movie_or_404(session, movie_id)
 
     likes_stmt = (
         select(func.count())
@@ -234,8 +235,8 @@ async def set_movie_rating(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> RatingSetOut:
-    await _get_movie_or_404(session, payload.movie_id)
-    await _set_rating(
+    await get_movie_or_404(session, payload.movie_id)
+    await set_rating(
         session,
         user_id=current_user.id,
         movie_id=payload.movie_id,
@@ -254,7 +255,7 @@ async def remove_rating(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
-    await _get_movie_or_404(session, movie_id)
+    await get_movie_or_404(session, movie_id)
 
     result = await session.execute(
         select(Rating).where(
@@ -284,7 +285,7 @@ async def get_rating_summary(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> RatingSummaryOut:
-    await _get_movie_or_404(session, movie_id)
+    await get_movie_or_404(session, movie_id)
 
     avg_stmt = select(func.avg(Rating.score)).where(Rating.movie_id == movie_id)
     votes_stmt = (
@@ -319,7 +320,7 @@ async def create_comment(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> CommentOut:
-    await get_movie_or_404(session, movie_id)
+    await get_movie_or_404(session, payload.movie_id)
 
     parent: Comment | None = None
     if payload.parent_id is not None:
@@ -364,7 +365,7 @@ async def list_comments(
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
 ) -> CommentsListOut:
-    await _get_movie_or_404(session, movie_id)
+    await get_movie_or_404(session, movie_id)
 
     stmt = (
         select(Comment)
@@ -389,7 +390,7 @@ async def delete_comment(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> MessageOut:
-    comment = await _get_comment_or_404(session, comment_id)
+    comment = await get_comment_or_404(session, comment_id)
 
     if comment.user_id != current_user.id:
         raise HTTPException(
