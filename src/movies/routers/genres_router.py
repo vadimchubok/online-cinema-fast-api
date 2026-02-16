@@ -4,20 +4,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_async_session
 from src.movies import crud, schemas
-from src.auth.dependencies import require_role_from_token
+from src.auth.dependencies import require_role
 from src.auth.models import User, UserGroupEnum
 
 router = APIRouter(prefix="/genres", tags=["Genres"])
 
 
 user_permission = Depends(
-    require_role_from_token(
-        UserGroupEnum.USER, UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN
-    )
+    require_role(UserGroupEnum.USER, UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
 )
 
 moderator_permission = Depends(
-    require_role_from_token(UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
+    require_role(UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN)
 )
 
 

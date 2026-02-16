@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Security
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -146,38 +146,6 @@ async def get_current_user_profile(
     query = select(UserProfileModel).where(UserProfileModel.user_id == current_user.id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
-
-
-def get_user_group(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-) -> str:
-    """
-    Extract user group from access token payload.
-    """
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload or "user_group" not in payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return payload["user_group"]
-
-
-def require_role_from_token(*allowed_roles: UserGroupEnum):
-    """
-    Dependency factory to check user's role from token payload.
-    """
-
-    def role_checker(user_group: str = Depends(get_user_group)):
-        if user_group not in [role.value for role in allowed_roles]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. Required roles: {[role.value for role in allowed_roles]}",
-            )
-
-    return role_checker
 
 
 def get_sendgrid_service() -> SendGridWebhookService:
