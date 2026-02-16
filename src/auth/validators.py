@@ -4,6 +4,9 @@ import email_validator
 
 
 def validate_password_strength(password: str) -> str:
+    """
+    Validate password meets strength requirements.
+    """
     if len(password) < 8:
         raise ValueError("Password must contain at least 8 characters.")
     if not re.search(r"[A-Z]", password):
@@ -43,6 +46,12 @@ def validate_passwords_different(
 
 
 def validate_email(user_email: str) -> str:
+    """
+    Validate and normalize email address.
+
+    Uses email-validator library to check email format and normalize it.
+    Deliverability check is disabled for privacy and performance.
+    """
     try:
         email_info = email_validator.validate_email(
             user_email, check_deliverability=False

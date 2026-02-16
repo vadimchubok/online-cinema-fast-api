@@ -41,12 +41,12 @@ async def test_final_sprint_coverage(client, db_session):
     await db_session.refresh(movie)
 
     login_data = {"email": user.email, "password": "Pass123!"}
-    login_res = await client.post("/api/v1/user/login", json=login_data)
+    login_res = await client.post("/api/v1/user/login/", json=login_data)
     token = login_res.json()["access_token"]
     refresh = login_res.json()["refresh_token"]
     auth_headers = {"Authorization": f"Bearer {token}"}
 
-    await client.post("/api/v1/user/refresh", json={"refresh_token": refresh})
+    await client.post("/api/v1/user/refresh/", json={"refresh_token": refresh})
     await cart_crud.add_movie_to_cart(db_session, movie.id, user.id)
 
     cart = await cart_crud.get_or_create_cart(db_session, user.id)
@@ -67,7 +67,7 @@ async def test_final_sprint_coverage(client, db_session):
     )
 
     await client.post(
-        "/api/v1/user/password-change",
+        "/api/v1/user/password-change/",
         headers=auth_headers,
         json={
             "current_password": "Pass123!",
@@ -75,4 +75,4 @@ async def test_final_sprint_coverage(client, db_session):
             "new_password_confirm": "NewPass123!",
         },
     )
-    await client.post("/api/v1/user/logout", headers=auth_headers)
+    await client.post("/api/v1/user/logout/", headers=auth_headers)

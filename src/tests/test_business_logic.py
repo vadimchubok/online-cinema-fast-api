@@ -54,7 +54,7 @@ async def test_order_and_payment_flow(client, db_session):
         order_id=order.id,
         user_id=user.id,
         amount=order.total_amount,
-        status=PaymentStatus.SUCCESSFUL,  # Тепер статус вірний
+        status=PaymentStatus.SUCCESSFUL,
         external_payment_id=f"ext_{uuid.uuid4().hex}",
     )
     db_session.add(payment)
@@ -70,4 +70,4 @@ async def test_order_and_payment_flow(client, db_session):
     )
 
     headers = {"Authorization": f"Bearer {uuid.uuid4().hex}"}
-    await client.get("/api/v1/user/me", headers=headers)
+    await client.get("/api/v1/user/me/", headers=headers)

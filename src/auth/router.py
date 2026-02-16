@@ -1,13 +1,27 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Request,
+    BackgroundTasks,
+)
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 
-from src.auth.dependencies import get_current_user, get_current_user_profile
+from src.auth.dependencies import (
+    get_current_user,
+    get_current_user_profile,
+    get_full_user,
+    get_sendgrid_service,
+)
 from src.auth.models import (
     User,
     UserGroup,
@@ -20,7 +34,6 @@ from src.auth.models import (
 from src.auth.schemas import (
     LoginRequest,
     UserCreate,
-    UserResponse,
     TokenLoginResponseSchema,
     UserRegistrationResponseSchema,
     TokenRefreshRequestSchema,
@@ -33,11 +46,12 @@ from src.auth.schemas import (
     PasswordResetConfirmSchema,
     PasswordResetRequestSchema,
     UserProfileUpdate,
+    CurrentUserDTO,
+    UserMeResponse,
 )
 from src.auth.security import (
     create_access_token,
     verify_password,
-    generate_secure_token,
 )
 from src.core.config import settings
 from src.core.database import get_async_session
@@ -53,36 +67,44 @@ s3_service = S3Service()
 
 
 @router.post(
-    "/register",
+    "/register/",
     response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Register new user",
     description="Register a new user. User must activate account via activation token.",
 )
 async def register(
-    user_data: UserCreate, session: AsyncSession = Depends(get_async_session)
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Register new user
+    Creates a new user account with the provided email and password.
+    User account is created in inactive state and requires email activation.
     """
-    result = await session.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+    if user_data.user_group:
+        result = await session.execute(
+            select(UserGroup).where(UserGroup.name == user_data.user_group)
         )
+        user_group = result.scalar_one_or_none()
 
-    result = await session.execute(
-        select(UserGroup).where(UserGroup.name == UserGroupEnum.USER.value)
-    )
-    user_group = result.scalar_one_or_none()
-
-    if not user_group:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User group not found. Please run database migrations first.",
+        if not user_group:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User group '{user_data.user_group}' not found",
+            )
+    else:
+        result = await session.execute(
+            select(UserGroup).where(UserGroup.name == UserGroupEnum.USER.value)
         )
+        user_group = result.scalar_one_or_none()
+
+        if not user_group:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Default user group not found. Please run database migrations first.",
+            )
 
     new_user = User(
         email=str(user_data.email),
@@ -90,23 +112,28 @@ async def register(
     )
     new_user.password = user_data.password
 
-    activation_token_value = generate_secure_token()
-    activation_token = ActivationTokenModel(
-        user=new_user,
-        token=activation_token_value,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
-    )
+    activation_token = ActivationTokenModel(user=new_user)
 
     session.add(new_user)
     session.add(activation_token)
-    await session.commit()
-    await session.refresh(new_user)
+
+    try:
+        await session.flush()
+        activation_token_value = activation_token.token
+        await session.commit()
+        await session.refresh(new_user)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
 
     activation_link = (
         f"http://localhost:8000/api/v1/user/activate/{activation_token_value}"
     )
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=new_user.email,
         template_id=settings.SENDGRID_ACTIVATION_TEMPLATE_ID,
         data={"activation_link": activation_link},
@@ -120,7 +147,7 @@ async def register(
 
 
 @router.post(
-    "/login",
+    "/login/",
     response_model=TokenLoginResponseSchema,
     summary="Login",
     description="Login and receive access token. Refresh token is issued together.",
@@ -129,11 +156,14 @@ async def login(
     credentials: LoginRequest, session: AsyncSession = Depends(get_async_session)
 ):
     """
-    User login
+    Authenticate user and generate JWT tokens.
+
+    Validates user credentials and returns access and refresh tokens.
+    User must have an activated account to login.
     """
     result = await session.execute(
         select(User)
-        .options(joinedload(User.group))
+        .options(selectinload(User.group))
         .where(User.email == credentials.email)
     )
     user = result.scalar_one_or_none()
@@ -150,42 +180,44 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
-    access_token = create_access_token(user_id=user.id, user_group=user.group.name)
-    refresh_token_value = generate_secure_token()
+    access_token = create_access_token(user=user)
     refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     refresh_token = RefreshTokenModel(
         user_id=user.id,
-        token=refresh_token_value,
         expires_at=refresh_expires_at,
     )
 
     session.add(refresh_token)
+    await session.flush()
     await session.commit()
 
     return TokenLoginResponseSchema(
         access_token=access_token,
-        refresh_token=refresh_token_value,
+        refresh_token=refresh_token.token,
     )
 
 
 @router.get(
-    "/me",
-    response_model=UserResponse,
+    "/me/",
+    response_model=UserMeResponse,
     summary="Get current user",
     description="Get information about currently authenticated user",
 )
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: CurrentUserDTO = Depends(get_current_user)):
     """
-    Get info about current user
+    Get current authenticated user information.
+
+    Retrieves user data from JWT token without database query.
+    Fast and efficient endpoint for getting current user details.
     """
     return current_user
 
 
 @router.post(
-    "/activate",
+    "/activate/",
     response_model=ActivationResponse,
     status_code=status.HTTP_200_OK,
     summary="Activate user account",
@@ -240,7 +272,7 @@ async def activate_user(
 
 
 @router.post(
-    "/refresh",
+    "/refresh/",
     response_model=TokenLoginResponseSchema,
     summary="Refresh access token",
     description="Rotate refresh token and issue a new access token",
@@ -249,6 +281,12 @@ async def refresh_access_token(
     data: TokenRefreshRequestSchema,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Refresh expired access token using refresh token.
+
+    Implements refresh token rotation for enhanced security.
+    Old refresh token is deleted and new one is issued.
+    """
 
     result = await session.execute(
         select(RefreshTokenModel)
@@ -274,6 +312,8 @@ async def refresh_access_token(
 
     user = refresh_token.user
 
+    await session.refresh(user, ["group"])
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -282,40 +322,44 @@ async def refresh_access_token(
 
     await session.delete(refresh_token)
 
-    new_refresh_value = generate_secure_token()
     new_refresh_expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     new_refresh = RefreshTokenModel(
         user_id=user.id,
-        token=new_refresh_value,
         expires_at=new_refresh_expires_at,
     )
 
     session.add(new_refresh)
-
-    new_access_token = create_access_token(user_id=user.id)
+    await session.flush()
+    new_access_token = create_access_token(user=user)
 
     await session.commit()
 
     return {
         "access_token": new_access_token,
-        "refresh_token": new_refresh_value,
+        "refresh_token": new_refresh.token,
         "token_type": "bearer",
     }
 
 
 @router.post(
-    "/logout",
+    "/logout/",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Logout",
     description="Logout current user and revoke all refresh tokens",
 )
 async def logout(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Logout user and invalidate all refresh tokens.
+
+    Deletes all refresh tokens for the current user from database.
+    This prevents further token refresh until user logs in again.
+    """
     await session.execute(
         delete(RefreshTokenModel).where(RefreshTokenModel.user_id == current_user.id)
     )
@@ -323,7 +367,7 @@ async def logout(
 
 
 @router.post(
-    "/password-reset/request",
+    "/password-reset/request/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Request password reset",
@@ -331,6 +375,7 @@ async def logout(
 )
 async def request_password_reset(
     data: PasswordResetRequestSchema,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -342,12 +387,7 @@ async def request_password_reset(
     result = await session.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
-    if not user:
-        return PasswordResetResponse(
-            detail="If the email exists, a password reset link has been sent"
-        )
-
-    if not user.is_active:
+    if not user or not user.is_active:
         return PasswordResetResponse(
             detail="If the email exists, a password reset link has been sent"
         )
@@ -358,21 +398,21 @@ async def request_password_reset(
         )
     )
 
-    reset_token_value = generate_secure_token()
     reset_token = PasswordResetTokenModel(
         user_id=user.id,
-        token=reset_token_value,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # 1 hour expiry
     )
 
     session.add(reset_token)
+    await session.flush()
+    reset_token_value = reset_token.token
     await session.commit()
 
     reset_link = (
         f"http://localhost:8000/api/v1/user/password-reset/confirm/{reset_token_value}"
     )
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=user.email,
         template_id=settings.SENDGRID_PASSWORD_RESET_TEMPLATE_ID,
         data={"reset_link": reset_link},
@@ -385,7 +425,7 @@ async def request_password_reset(
 
 
 @router.post(
-    "/password-reset/confirm",
+    "/password-reset/confirm/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Confirm password reset",
@@ -439,7 +479,7 @@ async def confirm_password_reset(
 
 
 @router.post(
-    "/password-change",
+    "/password-change/",
     response_model=PasswordResetResponse,
     status_code=status.HTTP_200_OK,
     summary="Change password",
@@ -447,7 +487,7 @@ async def confirm_password_reset(
 )
 async def change_password(
     data: PasswordChangeSchema,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_full_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -489,24 +529,22 @@ async def change_password(
 
 
 @router.post(
-    "/profile/create",
+    "/profile/create/",
     response_model=UserProfileResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user_profile(
     profile_data: UserProfileCreate,
-    user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    existing_profile = await db.execute(
-        select(UserProfileModel).where(UserProfileModel.user_id == user.id)
-    )
-    if existing_profile.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
-        )
+    """
+    Create profile for current user.
 
-    new_profile = UserProfileModel(user_id=user.id, **profile_data.model_dump())
+    Creates a new profile with optional personal information.
+    Each user can have only one profile.
+    """
+    new_profile = UserProfileModel(user_id=current_user.id, **profile_data.model_dump())
     db.add(new_profile)
 
     try:
@@ -514,13 +552,20 @@ async def create_user_profile(
         await db.refresh(new_profile)
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Error creating profile")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Profile already exists"
+        )
 
     return new_profile
 
 
-@router.get("/profile", response_model=UserProfileResponse)
+@router.get("/profile/", response_model=UserProfileResponse)
 async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_profile)):
+    """
+    Get current user's profile.
+
+    Retrieves profile information with pre-signed avatar URL if avatar exists.
+    """
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_204_NO_CONTENT,
@@ -537,7 +582,7 @@ async def get_my_profile(profile: UserProfileModel = Depends(get_current_user_pr
     return response
 
 
-@router.patch("/profile", response_model=UserProfileResponse)
+@router.patch("/profile/", response_model=UserProfileResponse)
 async def update_my_profile(
     profile_data: UserProfileUpdate,
     profile: UserProfileModel = Depends(get_current_user_profile),
@@ -588,10 +633,10 @@ async def update_my_profile(
     return response
 
 
-@router.patch("/profile/avatar")
+@router.patch("/profile/avatar/")
 async def update_avatar(
     file: UploadFile = File(...),
-    user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
     profile: UserProfileModel = Depends(get_current_user_profile),
     db: AsyncSession = Depends(get_async_session),
 ):
@@ -607,7 +652,7 @@ async def update_avatar(
 
     processed_image = process_avatar(file)
 
-    s3_key = f"profiles/{user.id}/{uuid.uuid4()}.webp"
+    s3_key = f"profiles/{current_user.id}/{uuid.uuid4()}.webp"
 
     if profile.avatar:
         await s3_service.delete_file(profile.avatar)
@@ -623,14 +668,19 @@ async def update_avatar(
 
 
 @router.post(
-    "/sendgrid",
+    "/sendgrid/",
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def sendgrid_webhook(
     request: Request,
     session: AsyncSession = Depends(get_async_session),
+    sendgrid_service: SendGridWebhookService = Depends(get_sendgrid_service),
 ):
-    """Handle SendGrid webhook events."""
+    """
+    Handle SendGrid webhook events.
+    Processes email delivery events from SendGrid (bounce, delivered, etc.).
+    Used for email delivery monitoring and user cleanup.
+    """
     try:
         events = await request.json()
     except JSONDecodeError:
@@ -640,7 +690,7 @@ async def sendgrid_webhook(
         return {"status": "error", "detail": "Expected event list"}
 
     for event in events:
-        await SendGridWebhookService.process_event(event, session)
+        await sendgrid_service.process_event(event, session)
 
     await session.commit()
     return {"status": "ok"}

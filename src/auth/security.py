@@ -1,10 +1,14 @@
 import secrets
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from src.core.config import settings
+
+if TYPE_CHECKING:
+    from src.auth.models import User
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -43,15 +47,26 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: int, user_group: str | None = None) -> str:
+def create_access_token(user: "User" = None) -> str:
     """
-    Create a new access token with a default or specified expiration time.
+    Create JWT access token with full user information.
+
+    Token payload includes: id, email, user_group, is_active.
+    This eliminates need for database queries in get_current_user dependency.
+
+    Args:
+        user: Full User object with group relationship loaded
+
+    Returns:
+        JWT access token string
     """
     expire = datetime.now() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {
-        "sub": str(user_id),
-        "group": user_group,
+        "sub": str(user.id),
+        "email": user.email,
+        "user_group": user.group.name,
+        "is_active": user.is_active,
         "exp": expire,
         "type": "access",
     }

@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import stripe
-from fastapi import Request, Depends
+from fastapi import Request, Depends, BackgroundTasks
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,9 @@ from src.payments.models import Payment, PaymentStatus, PaymentItem
 
 
 async def resolve_payment(
-    request: Request, db: Annotated[AsyncSession, Depends(get_async_session)]
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_async_session)],
+    background_tasks: BackgroundTasks,
 ):
     payload = await request.json()
     obj = payload.get("data").get("object")
@@ -55,7 +57,8 @@ async def resolve_payment(
             user = await db.get(User, user_id)
             user_email = user.email
             await db.commit()
-            send_email(
+            background_tasks.add_task(
+                send_email,
                 to_email=user_email,
                 email_type="successful_payment",
                 template_id=settings.SENDGRID_PAYMENT_TEMPLATE_ID,

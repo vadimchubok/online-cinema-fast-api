@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import require_role, get_current_user
-from src.auth.models import UserGroupEnum, User
+from src.auth.models import UserGroupEnum
+from src.auth.schemas import CurrentUserDTO
 from src.cart.exceptions import (
     MovieAlreadyPurchasedException,
     MovieAlreadyInCartException,
@@ -40,7 +41,7 @@ moderator_permission = Depends(
 async def add_movie_to_user_cart(
     cart_item: CartItemCreate,
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
 ):
     try:
         await add_movie_to_cart(
@@ -61,7 +62,7 @@ async def add_movie_to_user_cart(
 async def remove_movie_from_cart(
     movie_id: int,
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
 ):
     try:
         await remove_movie(db=db, movie_id=movie_id, user_id=current_user.id)
@@ -76,7 +77,7 @@ async def remove_movie_from_cart(
 )
 async def remove_all_movies_from_cart(
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDTO = Depends(get_current_user),
 ):
     try:
         await clear_cart(db=db, user_id=current_user.id)

@@ -56,8 +56,8 @@ async def test_process_bounce_event():
         "email": "bad@email.com",
         "email_type": "email_activation",
     }
-
-    await SendGridWebhookService.process_event(event, mock_session)
+    service = SendGridWebhookService()
+    await service.process_event(event, mock_session)
     mock_session.delete.assert_called_once_with(test_user)
 
 
@@ -65,5 +65,6 @@ async def test_process_bounce_event():
 async def test_process_non_fatal_event():
     mock_session = AsyncMock()
     event = {"event": "delivered", "email": "ok@email.com"}
-    await SendGridWebhookService.process_event(event, mock_session)
+    service = SendGridWebhookService()
+    await service.process_event(event, mock_session)
     assert not mock_session.execute.called
