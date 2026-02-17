@@ -19,7 +19,7 @@ moderator_permission = Depends(
 )
 
 
-@router.get("/", response_model=List[schemas.GenreReadWithCount])
+@router.get("", response_model=List[schemas.GenreReadWithCount])
 async def read_genres(
     db: AsyncSession = Depends(get_async_session),
     staff: User = user_permission,
@@ -30,7 +30,7 @@ async def read_genres(
     return await crud.get_genres_with_counts(db)
 
 
-@router.post("/", response_model=schemas.GenreRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.GenreRead, status_code=status.HTTP_201_CREATED)
 async def create_genre(
     genre_in: schemas.GenreCreate,
     db: AsyncSession = Depends(get_async_session),
@@ -43,7 +43,7 @@ async def create_genre(
     return await crud.create_genre(db, genre_in)
 
 
-@router.patch("/{genre_id}", response_model=schemas.GenreRead)
+@router.patch("/{genre_id}/", response_model=schemas.GenreRead)
 async def update_genre(
     genre_id: int,
     genre_update: schemas.GenreUpdate,
@@ -60,7 +60,7 @@ async def update_genre(
     return await crud.update_genre(db, genre, genre_update)
 
 
-@router.delete("/{genre_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{genre_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_genre(
     genre_id: int,
     db: AsyncSession = Depends(get_async_session),

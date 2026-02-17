@@ -20,7 +20,7 @@ moderator_permission = Depends(
 )
 
 
-@router.get("/", response_model=List[schemas.StarRead])
+@router.get("", response_model=List[schemas.StarRead])
 async def read_stars(
     skip: int = 0,
     limit: int = 100,
@@ -34,7 +34,7 @@ async def read_stars(
     return await crud.get_stars(db, skip=skip, limit=limit, search=search)
 
 
-@router.get("/{star_id}", response_model=schemas.StarRead)
+@router.get("/{star_id}/", response_model=schemas.StarRead)
 async def read_star(
     star_id: int,
     db: AsyncSession = Depends(get_async_session),
@@ -49,7 +49,7 @@ async def read_star(
     return star
 
 
-@router.post("/", response_model=schemas.StarRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.StarRead, status_code=status.HTTP_201_CREATED)
 async def create_star(
     star_in: schemas.StarCreate,
     db: AsyncSession = Depends(get_async_session),
@@ -62,7 +62,7 @@ async def create_star(
     return await crud.create_star(db, star_in)
 
 
-@router.patch("/{star_id}", response_model=schemas.StarRead)
+@router.patch("/{star_id}/", response_model=schemas.StarRead)
 async def update_star(
     star_id: int,
     star_update: schemas.StarUpdate,
@@ -79,7 +79,7 @@ async def update_star(
     return await crud.update_star(db, star, star_update)
 
 
-@router.delete("/{star_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{star_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_star(
     star_id: int,
     db: AsyncSession = Depends(get_async_session),

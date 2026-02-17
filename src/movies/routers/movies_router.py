@@ -20,7 +20,7 @@ moderator_permission = Depends(
 )
 
 
-@router.get("/", response_model=List[schemas.MovieRead])
+@router.get("", response_model=List[schemas.MovieRead])
 async def read_movies(
     skip: int = 0,
     limit: int = 20,
@@ -42,7 +42,7 @@ async def read_movies(
     return movies
 
 
-@router.get("/{movie_id}", response_model=schemas.MovieRead)
+@router.get("/{movie_id}/", response_model=schemas.MovieRead)
 async def read_movie(
     movie_id: int,
     db: AsyncSession = Depends(get_async_session),
@@ -58,7 +58,7 @@ async def read_movie(
     return movie
 
 
-@router.post("/", response_model=schemas.MovieRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.MovieRead, status_code=status.HTTP_201_CREATED)
 async def create_movie_endpoint(
     movie_in: schemas.MovieCreate,
     db: AsyncSession = Depends(get_async_session),
@@ -72,7 +72,7 @@ async def create_movie_endpoint(
     return await crud.create_movie(session=db, movie_in=movie_in)
 
 
-@router.patch("/{movie_id}", response_model=schemas.MovieRead)
+@router.patch("/{movie_id}/", response_model=schemas.MovieRead)
 async def update_movie_endpoint(
     movie_id: int,
     movie_update: schemas.MovieUpdate,
@@ -93,7 +93,7 @@ async def update_movie_endpoint(
     return updated_movie
 
 
-@router.delete("/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{movie_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_movie_endpoint(
     movie_id: int,
     db: AsyncSession = Depends(get_async_session),
