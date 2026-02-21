@@ -72,8 +72,10 @@ client.interceptors.response.use(
     const refreshToken = getRefreshToken()
 
     if (!refreshToken) {
-      clearTokens()
-      window.location.href = '/login'
+      // No session at all — just reject so the calling page can handle it.
+      // Do NOT redirect here: public pages (home, movie detail) also hit
+      // auth-required endpoints and should handle 401 gracefully themselves.
+      isRefreshing = false
       return Promise.reject(error)
     }
 

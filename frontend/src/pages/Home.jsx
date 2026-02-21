@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getMovies, getGenres } from '../api/movies'
 import MovieCard from '../components/movies/MovieCard'
 import Pagination from '../components/ui/Pagination'
-import Spinner from '../components/ui/Spinner'
+import { useAuth } from '../context/AuthContext'
 
 const LIMIT = 20
 
@@ -14,6 +14,42 @@ const SORT_OPTIONS = [
   { value: 'price_asc',  label: 'Price: Low → High' },
   { value: 'price_desc', label: 'Price: High → Low' },
 ]
+
+// ─── guest landing ────────────────────────────────────────────────────────────
+function GuestHero() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center px-4 py-28 gap-8">
+      {/* Glow backdrop */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2
+          w-[600px] h-[400px] bg-red-900/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative space-y-4 max-w-xl">
+        <h1 className="text-5xl font-bold text-white leading-tight">
+          Your Cinema,<br />
+          <span className="text-red-600">Anytime.</span>
+        </h1>
+        <p className="text-[#9999aa] text-lg">
+          Thousands of movies. One subscription. Sign in to start watching.
+        </p>
+      </div>
+
+      <div className="relative flex flex-col sm:flex-row gap-3">
+        <Link to="/register"
+          className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold
+            rounded-xl transition-colors text-sm">
+          Get Started
+        </Link>
+        <Link to="/login"
+          className="px-8 py-3 bg-[#1a1a24] hover:bg-[#2a2a38] text-[#f1f1f1]
+            border border-[#2a2a38] font-semibold rounded-xl transition-colors text-sm">
+          Sign In
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 // ─── skeleton card ────────────────────────────────────────────────────────────
 function SkeletonCard() {
@@ -37,7 +73,7 @@ function SkeletonCard() {
 // ─── genre chip bar ───────────────────────────────────────────────────────────
 function GenreBar({ genres, activeId, onChange }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
       <Chip active={!activeId} onClick={() => onChange(null)}>All</Chip>
       {genres.map((g) => (
         <Chip key={g.id} active={activeId === g.id} onClick={() => onChange(g.id)}>
@@ -66,13 +102,13 @@ function Chip({ active, onClick, children }) {
 
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function Home() {
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // URL-driven filter state
-  const search  = searchParams.get('search')  || ''
-  const sortBy  = searchParams.get('sort_by') || ''
+  const search  = searchParams.get('search')   || ''
+  const sortBy  = searchParams.get('sort_by')  || ''
   const genreId = searchParams.get('genre_id') ? Number(searchParams.get('genre_id')) : null
-  const page    = searchParams.get('page')    ? Number(searchParams.get('page')) : 1
+  const page    = searchParams.get('page')     ? Number(searchParams.get('page')) : 1
 
   const [genres,  setGenres]  = useState([])
   const [movies,  setMovies]  = useState([])
@@ -80,15 +116,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
-  // Fetch genres once
+  // Only fetch when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return
     getGenres()
       .then(({ data }) => setGenres(data))
       .catch(() => {})
-  }, [])
+  }, [isAuthenticated])
 
-  // Fetch movies whenever filters / page change
   const fetchMovies = useCallback(() => {
+    if (!isAuthenticated) return
     setLoading(true)
     setError(null)
 
@@ -107,19 +144,18 @@ export default function Home() {
       })
       .catch(() => setError('Failed to load movies. Please try again.'))
       .finally(() => setLoading(false))
-  }, [search, sortBy, genreId, page])
+  }, [isAuthenticated, search, sortBy, genreId, page])
 
   useEffect(() => { fetchMovies() }, [fetchMovies])
 
   const totalPages = Math.ceil(total / LIMIT)
 
-  // ─── param setters ────────────────────────────────────────────────────────
   function setParam(key, value) {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       if (value != null && value !== '') next.set(key, value)
       else next.delete(key)
-      next.delete('page') // reset page on filter change
+      next.delete('page')
       return next
     })
   }
@@ -134,7 +170,13 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ─── render ───────────────────────────────────────────────────────────────
+  // Wait for auth to resolve before deciding which view to show
+  if (authLoading) return null
+
+  // Guest view
+  if (!isAuthenticated) return <GuestHero />
+
+  // Authenticated view
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
@@ -177,7 +219,8 @@ export default function Home() {
       {/* Error */}
       {error && (
         <div className="rounded-xl border border-red-800/40 bg-red-950/20 px-4 py-3 text-sm text-red-400">
-          {error}
+          {error}{' '}
+          <button onClick={fetchMovies} className="underline hover:no-underline">Retry</button>
         </div>
       )}
 
