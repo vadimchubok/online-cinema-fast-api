@@ -1,11 +1,9 @@
-import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import ProtectedRoute from './components/ui/ProtectedRoute'
 import Spinner from './components/ui/Spinner'
-import { useAuth } from './context/AuthContext'
-import { lazy, Suspense } from 'react'
 
 // ─── lazy pages ───────────────────────────────────────────────────────────────
 const Home           = lazy(() => import('./pages/Home'))
@@ -19,7 +17,7 @@ const Orders         = lazy(() => import('./pages/Orders'))
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
 const PaymentCancel  = lazy(() => import('./pages/PaymentCancel'))
 
-// ─── shell layout ────────────────────────────────────────────────────────────
+// ─── shell ────────────────────────────────────────────────────────────────────
 function AppShell({ cartCount, hasUnread }) {
   return (
     <div className="flex flex-col min-h-screen">
@@ -36,32 +34,33 @@ function AppShell({ cartCount, hasUnread }) {
 
 // ─── root ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const { isAuthenticated } = useAuth()
   const [cartCount, setCartCount] = useState(0)
   const [hasUnread, setHasUnread] = useState(false)
 
-  // Page-level callbacks passed down via context or props if needed
-  // For now Navbar receives counts directly; pages call refreshCart / refreshNotifications
-  // when they mutate cart/notification state.
+  // Listen for cart mutations dispatched from any page/component
+  useEffect(() => {
+    const handler = (e) => setCartCount((c) => Math.max(0, c + (e.detail?.delta ?? 0)))
+    window.addEventListener('cinemahub:cart', handler)
+    return () => window.removeEventListener('cinemahub:cart', handler)
+  }, [])
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public + protected share the same shell */}
         <Route element={<AppShell cartCount={cartCount} hasUnread={hasUnread} />}>
           {/* Public */}
-          <Route index element={<Home />} />
-          <Route path="movies/:id" element={<MovieDetail />} />
-          <Route path="login"    element={<Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="activate" element={<Activate />} />
+          <Route index                element={<Home />} />
+          <Route path="movies/:id"    element={<MovieDetail />} />
+          <Route path="login"         element={<Login />} />
+          <Route path="register"      element={<Register />} />
+          <Route path="activate"      element={<Activate />} />
 
           {/* Protected */}
           <Route path="profile" element={
-            <ProtectedRoute><Profile /></ProtectedRoute>
+            <ProtectedRoute><Profile setHasUnread={setHasUnread} /></ProtectedRoute>
           } />
           <Route path="cart" element={
-            <ProtectedRoute><Cart onCartChange={setCartCount} /></ProtectedRoute>
+            <ProtectedRoute><Cart setCartCount={setCartCount} /></ProtectedRoute>
           } />
           <Route path="orders" element={
             <ProtectedRoute><Orders /></ProtectedRoute>
