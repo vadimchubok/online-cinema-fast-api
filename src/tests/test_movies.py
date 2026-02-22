@@ -40,16 +40,20 @@ async def test_create_movie_success(moderator_client, sample_certification):
 @pytest.mark.integration
 async def test_get_movies_list_with_filters(moderator_client):
     filters = [
-        {"query": "Inception"},
-        {"year": 2010},
+        {"search": "Inception"},
         {"sort_by": "price_asc"},
-        {"imdb_min": 5.0},
+        {"sort_by": "year_desc"},
+        {"limit": 5},
     ]
 
     for params in filters:
         response = await moderator_client.get("/api/v1/movies", params=params)
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert isinstance(data, dict)
+        assert "total" in data
+        assert "items" in data
+        assert isinstance(data["items"], list)
 
 
 @pytest.mark.integration
