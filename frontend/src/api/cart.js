@@ -1,15 +1,44 @@
 import client from './client'
 
-// Cart ID is returned by the backend and stored locally so we can fetch cart contents.
-// It is set the first time we successfully retrieve or create a cart.
+// ─── localStorage cart items ──────────────────────────────────────────────────
+// GET /cart/{cart_id} requires a cart_id that the API never returns.
+// Instead we store the display data locally when adding items.
+// Shape stored: { id, name, price, year, genres }
 
-const CART_ID_KEY = 'cart_id'
+const ITEMS_KEY = 'cart_items'
 
-export const getStoredCartId  = ()       => localStorage.getItem(CART_ID_KEY)
-export const storeCartId      = (id)     => localStorage.setItem(CART_ID_KEY, id)
-export const clearStoredCartId = ()      => localStorage.removeItem(CART_ID_KEY)
+export function getLocalCartItems() {
+  try { return JSON.parse(localStorage.getItem(ITEMS_KEY)) ?? [] }
+  catch { return [] }
+}
 
-// ─── endpoints ────────────────────────────────────────────────────────────────
+export function addLocalCartItem(movie) {
+  const items = getLocalCartItems()
+  if (items.find((m) => m.id === movie.id)) return   // already present
+  const entry = {
+    id:     movie.id,
+    name:   movie.name,
+    price:  movie.price,
+    year:   movie.year,
+    genres: movie.genres ?? [],
+  }
+  localStorage.setItem(ITEMS_KEY, JSON.stringify([...items, entry]))
+}
+
+export function removeLocalCartItem(movieId) {
+  const items = getLocalCartItems().filter((m) => m.id !== movieId)
+  localStorage.setItem(ITEMS_KEY, JSON.stringify(items))
+}
+
+export function clearLocalCartItems() {
+  localStorage.removeItem(ITEMS_KEY)
+}
+
+export function localCartCount() {
+  return getLocalCartItems().length
+}
+
+// ─── API endpoints ────────────────────────────────────────────────────────────
 
 export const addToCart = (movie_id) =>
   client.post('/cart/movies/', { movie_id })
@@ -19,7 +48,3 @@ export const removeFromCart = (movie_id) =>
 
 export const clearCart = () =>
   client.delete('/cart/movies/')
-
-/** Pass the cart_id obtained from the user's cart resource. */
-export const getCart = (cartId) =>
-  client.get(`/cart/${cartId}`)

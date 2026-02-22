@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { addToCart } from '../../api/cart'
+import { addToCart, addLocalCartItem } from '../../api/cart'
 import { useAuth } from '../../context/AuthContext'
 
 // Deterministic poster gradient from movie id
@@ -48,6 +48,7 @@ export default function MovieCard({ movie, onAdded }) {
     setStatus('adding')
     try {
       await addToCart(movie.id)
+      addLocalCartItem(movie)
       setStatus('added')
       window.dispatchEvent(new CustomEvent('cinemahub:cart', { detail: { delta: 1 } }))
       onAdded?.()

@@ -6,7 +6,7 @@ import {
   getRating, setRating, removeRating,
   getComments, createComment, deleteComment,
 } from '../api/interactions'
-import { addToCart } from '../api/cart'
+import { addToCart, addLocalCartItem } from '../api/cart'
 import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/ui/Spinner'
 
@@ -46,7 +46,7 @@ function relativeTime(iso) {
 
 // ─── add to cart button ───────────────────────────────────────────────────────
 
-function AddToCartButton({ movieId }) {
+function AddToCartButton({ movieId, movie }) {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [status, setStatus] = useState('idle')
@@ -57,6 +57,7 @@ function AddToCartButton({ movieId }) {
     setStatus('adding')
     try {
       await addToCart(movieId)
+      addLocalCartItem(movie)
       setStatus('added')
       window.dispatchEvent(new CustomEvent('cinemahub:cart', { detail: { delta: 1 } }))
       setTimeout(() => setStatus('idle'), 2500)
@@ -612,7 +613,7 @@ export default function MovieDetail() {
             <span className="text-3xl font-bold text-red-500">
               ${Number(movie.price).toFixed(2)}
             </span>
-            <AddToCartButton movieId={movie.id} />
+            <AddToCartButton movieId={movie.id} movie={movie} />
           </div>
         </div>
       </div>

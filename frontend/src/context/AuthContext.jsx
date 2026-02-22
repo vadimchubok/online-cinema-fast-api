@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { login as apiLogin, logout as apiLogout, getMe } from '../api/auth'
 import { saveTokens, clearTokens, getAccessToken } from '../api/client'
-import { clearStoredCartId } from '../api/cart'
+import { clearLocalCartItems } from '../api/cart'
 
 const AuthContext = createContext(null)
 
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
       // best-effort — clear local state regardless
     } finally {
       clearTokens()
-      clearStoredCartId()
+      clearLocalCartItems()
       setUser(null)
     }
   }, [])
