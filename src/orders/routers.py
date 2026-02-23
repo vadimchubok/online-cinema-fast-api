@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from stripe import StripeError
 
 from src.auth.dependencies import require_role, get_current_user
-from src.auth.models import UserGroupEnum, User
+from src.auth.models import UserGroupEnum
+from src.auth.schemas import CurrentUserDTO
 from src.cart.exceptions import CartIsEmptyException
 from src.core.database import get_async_session
 from src.orders.crud import create_order, get_orders, cancel
@@ -35,7 +36,7 @@ moderator_permission = Depends(
 )
 async def place_new_order(
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[CurrentUserDTO, Depends(get_current_user)],
 ):
     try:
         result = await create_order(db=db, user=current_user)
@@ -67,7 +68,7 @@ async def place_new_order(
 @router.get("/my", response_model=List[OrderListSchema])
 async def get_user_orders(
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[CurrentUserDTO, Depends(get_current_user)],
 ):
     return await get_orders(db=db, user_id=current_user.id)
 

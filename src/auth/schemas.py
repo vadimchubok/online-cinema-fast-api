@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    user_group: Optional[str] = None
 
 
 class UserResponse(UserBase):
@@ -27,6 +28,24 @@ class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
+
+
+class CurrentUserDTO(BaseModel):
+    id: int
+    email: str
+    user_group: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserMeResponse(BaseModel):
+    id: int
+    email: str
+    is_active: bool
+    user_group: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoginRequest(BaseModel):

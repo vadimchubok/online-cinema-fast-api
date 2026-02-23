@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from src.auth.router import router as auth_router
-from src.movies.routers import router as movies_router
-from src.movies.routers import genres_router as genres_router
-from src.movies.routers import stars_router as stars_router
+from src.movies.routers.movies_router import router as movies_router
+from src.movies.routers.genres_router import router as genres_router
+from src.movies.routers.stars_router import router as stars_router
 from src.interactions.router import router as interaction_router
 from src.orders.routers import router as order_router
 from src.payments.routers import router as payment_router

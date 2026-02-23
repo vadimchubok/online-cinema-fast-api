@@ -1,12 +1,16 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request, HTTPException
+from fastapi import BackgroundTasks
 
 from src.auth.models import User, UserGroupEnum
 from src.payments.utils import resolve_payment, create_checkout_session
 from src.payments.models import Payment
 from src.orders.models import Order, OrderStatus
 from src.payments.routers import get_my_payments, list_all_payments, refund_payment
+
+
+mock_background_tasks = AsyncMock(spec=BackgroundTasks)
 
 
 @pytest.fixture
@@ -46,7 +50,7 @@ async def test_stripe_webhook_success(db_session):
     db_session.scalar = AsyncMock(return_value=None)
 
     with patch("src.payments.utils.send_email"):
-        await resolve_payment(mock_request, db_session)
+        await resolve_payment(mock_request, db_session, mock_background_tasks)
 
     assert mock_order.status == OrderStatus.PAID
 
@@ -90,11 +94,7 @@ async def test_create_checkout_session():
                 url="http://stripe.com/pay"
             )
 
-            url = await create_checkout_session(
-                user_id=1,
-                order_id=1,
-                amount=100.0
-            )
+            url = await create_checkout_session(user_id=1, order_id=1, amount=100.0)
 
             assert url == "http://stripe.com/pay"
 

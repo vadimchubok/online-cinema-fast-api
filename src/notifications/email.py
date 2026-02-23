@@ -13,7 +13,12 @@ def send_email(
     data: dict,
     email_type: str,
 ) -> None:
-    """Send email via SendGrid with dynamic template."""
+    """
+    Send email via SendGrid using dynamic template.
+
+    Sends transactional email with custom template and dynamic data.
+    Email type is tagged for webhook event tracking.
+    """
     if not settings.SENDGRID_API_KEY:
         raise RuntimeError("SENDGRID_API_KEY is not configured")
 

@@ -42,7 +42,7 @@ async def test_final_coverage_push(client, db_session):
 
     email = f"boost_{uuid.uuid4().hex[:6]}@test.com"
     await client.post(
-        "/api/v1/user/register",
+        "/api/v1/user/register/",
         json={
             "email": email,
             "password": "Password123!",
@@ -59,9 +59,9 @@ async def test_final_coverage_push(client, db_session):
         tok_obj.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
         await db_session.commit()
 
-        await client.post("/api/v1/user/activate", json={"token": tok_obj.token})
+        await client.post("/api/v1/user/activate/", json={"token": tok_obj.token})
 
-    await client.post("/api/v1/user/sendgrid", json={"events": "not_list"})
+    await client.post("/api/v1/user/sendgrid/", json={"events": "not_list"})
     await movie_crud.get_genres_with_counts(db_session)
 
     for sort in ["price_asc", "price_desc", "year_desc", "popularity"]:

@@ -11,14 +11,29 @@ FATAL_EVENTS = {"bounce", "blocked", "dropped", "spamreport"}
 
 
 class SendGridWebhookService:
-    @staticmethod
-    async def _handle_activation_email_failure(
+    """
+    Service for processing SendGrid webhook events.
+
+    Handles email delivery events and performs appropriate actions:
+    - Deletes unactivated users on fatal email errors
+    - Logs errors for active users
+    - Sends Telegram notifications
+    - Processes payment confirmations
+    """
+
+    async def handle_activation_email_failure(
+        self,
         email: str,
         event_type: str,
         reason: str | None,
         session: AsyncSession,
     ) -> None:
-        """Delete unactivated user or log warning for active user."""
+        """
+        Handle activation email delivery failure.
+
+        Deletes unactivated users if activation email fails to deliver.
+        Logs error for active users without deletion.
+        """
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
@@ -44,18 +59,18 @@ class SendGridWebhookService:
                 msg_gen.get_active_user_error_message(email, event_type, reason)
             )
 
-    @staticmethod
-    async def _handle_payment_email_failure(
+    async def handle_payment_email_failure(
+        self,
         email: str,
         event_type: str,
         reason: str | None,
         session: AsyncSession,
     ) -> None:
         """
-        Log payment notification delivery failure.
+        Handle payment confirmation email delivery failure.
 
-        Payment is already processed, so we only log the issue.
-        User can still see order details in their account.
+        Logs payment email failures but doesn't affect order status.
+        Payment is already processed, email is just notification.
         """
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
@@ -66,9 +81,12 @@ class SendGridWebhookService:
             msg_gen.get_payment_failure_message(email, event_type, reason)
         )
 
-    @staticmethod
-    async def process_event(event: dict, session: AsyncSession) -> None:
-        """Process SendGrid webhook event."""
+    async def process_event(self, event: dict, session: AsyncSession) -> None:
+        """
+        Process a single SendGrid webhook event.
+
+        Routes event to appropriate handler based on event type and email type.
+        """
         event_type = event.get("event")
         email = event.get("email")
         email_type = event.get("email_type")
@@ -85,11 +103,9 @@ class SendGridWebhookService:
             return
 
         if email_type == "email_activation":
-            await SendGridWebhookService._handle_activation_email_failure(
+            await self.handle_activation_email_failure(
                 email, event_type, reason, session
             )
 
         elif email_type == "successful_payment":
-            await SendGridWebhookService._handle_payment_email_failure(
-                email, event_type, reason, session
-            )
+            await self.handle_payment_email_failure(email, event_type, reason, session)

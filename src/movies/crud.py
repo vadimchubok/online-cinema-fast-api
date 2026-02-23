@@ -54,6 +54,30 @@ async def get_movie_by_id(session: AsyncSession, movie_id: int) -> Optional[Movi
     return result.scalar_one_or_none()
 
 
+async def get_movies_count(
+    session: AsyncSession,
+    search: Optional[str] = None,
+    genre_id: Optional[int] = None,
+) -> int:
+    """Return the total number of movies matching the given filters (no pagination)."""
+    query = select(func.count(Movie.id))
+
+    if genre_id:
+        query = query.where(Movie.genres.any(Genre.id == genre_id))
+
+    if search:
+        search_filter = or_(
+            Movie.name.ilike(f"%{search}%"),
+            Movie.description.ilike(f"%{search}%"),
+            Movie.stars.any(Star.name.ilike(f"%{search}%")),
+            Movie.directors.any(Director.name.ilike(f"%{search}%")),
+        )
+        query = query.where(search_filter)
+
+    result = await session.execute(query)
+    return result.scalar_one()
+
+
 async def get_movies(
     session: AsyncSession,
     skip: int = 0,

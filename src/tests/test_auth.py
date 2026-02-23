@@ -17,7 +17,7 @@ def mock_auth_hashing():
 @pytest.mark.integration
 async def test_register_user_success(client: AsyncClient):
     payload = {"email": "testuser@example.com", "password": "Strongpassword123!"}
-    response = await client.post("/api/v1/user/register", json=payload)
+    response = await client.post("/api/v1/user/register/", json=payload)
     assert response.status_code == 201
     assert response.json()["email"] == payload["email"]
 
@@ -25,8 +25,8 @@ async def test_register_user_success(client: AsyncClient):
 @pytest.mark.integration
 async def test_register_user_duplicate_email(client: AsyncClient):
     payload = {"email": "duplicate@example.com", "password": "Password123!"}
-    await client.post("/api/v1/user/register", json=payload)
-    response = await client.post("/api/v1/user/register", json=payload)
+    await client.post("/api/v1/user/register/", json=payload)
+    response = await client.post("/api/v1/user/register/", json=payload)
     assert response.status_code == 400
 
 
@@ -34,14 +34,14 @@ async def test_register_user_duplicate_email(client: AsyncClient):
 async def test_login_success(client: AsyncClient, db_session):
     email, password = "login@test.com", "Pass123!"
     await client.post(
-        "/api/v1/user/register", json={"email": email, "password": password}
+        "/api/v1/user/register/", json={"email": email, "password": password}
     )
     await db_session.execute(
         update(User).where(User.email == email).values(is_active=True)
     )
     await db_session.commit()
     response = await client.post(
-        "/api/v1/user/login", json={"email": email, "password": password}
+        "/api/v1/user/login/", json={"email": email, "password": password}
     )
     assert response.status_code == 200
     assert "access_token" in response.json()
@@ -51,10 +51,10 @@ async def test_login_success(client: AsyncClient, db_session):
 async def test_login_wrong_password(client: AsyncClient, db_session):
     email = "wrong_pass@test.com"
     await client.post(
-        "/api/v1/user/register", json={"email": email, "password": "CorrectPass123!"}
+        "/api/v1/user/register/", json={"email": email, "password": "CorrectPass123!"}
     )
     response = await client.post(
-        "/api/v1/user/login", json={"email": email, "password": "WrongPassword"}
+        "/api/v1/user/login/", json={"email": email, "password": "WrongPassword"}
     )
     assert response.status_code == 401
 
@@ -63,18 +63,18 @@ async def test_login_wrong_password(client: AsyncClient, db_session):
 async def test_get_me_success(client: AsyncClient, db_session):
     email, password = "me@test.com", "Pass123!"
     await client.post(
-        "/api/v1/user/register", json={"email": email, "password": password}
+        "/api/v1/user/register/", json={"email": email, "password": password}
     )
     await db_session.execute(
         update(User).where(User.email == email).values(is_active=True)
     )
     await db_session.commit()
     login_res = await client.post(
-        "/api/v1/user/login", json={"email": email, "password": password}
+        "/api/v1/user/login/", json={"email": email, "password": password}
     )
     token = login_res.json()["access_token"]
     response = await client.get(
-        "/api/v1/user/me", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/user/me/", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
     assert response.json()["email"] == email
@@ -83,5 +83,5 @@ async def test_get_me_success(client: AsyncClient, db_session):
 @pytest.mark.integration
 async def test_register_invalid_data(client: AsyncClient):
     payload = {"email": "invalid-email", "password": "123"}
-    response = await client.post("/api/v1/user/register", json=payload)
+    response = await client.post("/api/v1/user/register/", json=payload)
     assert response.status_code in [400, 422]

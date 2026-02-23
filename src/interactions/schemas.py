@@ -20,7 +20,16 @@ class FavoritesListOut(BaseModel):
     items: list[FavoriteMovieOut]
 
 
+class FavoriteIn(BaseModel):
+    movie_id: int
+
+
 ReactionValue = Literal["LIKE", "DISLIKE"]
+
+
+class ReactionSetIn(BaseModel):
+    movie_id: int
+    reaction: ReactionValue
 
 
 class ReactionSetOut(BaseModel):
@@ -39,7 +48,8 @@ class MessageOut(BaseModel):
     detail: str = Field(..., examples=["OK"])
 
 
-class CommentCreate(BaseModel):
+class CommentCreateIn(BaseModel):
+    movie_id: int
     text: str = Field(..., min_length=1, max_length=5000)
     parent_id: int | None = None
 
@@ -62,6 +72,7 @@ class CommentsListOut(BaseModel):
 
 class NotificationOut(BaseModel):
     id: int
+    recipient_user_id: int
     type: str
     is_read: bool
     created_at: datetime
@@ -77,6 +88,7 @@ class NotificationsListOut(BaseModel):
 
 
 class RatingSetIn(BaseModel):
+    movie_id: int
     score: int = Field(..., ge=1, le=10, examples=[10])
 
 
